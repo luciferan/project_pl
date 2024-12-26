@@ -1,0 +1,125 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="소스 파일">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="리소스 파일">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="_common_variable.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="_json.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="buffer.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="certifyConvertData.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="certifyData.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="connector.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="defaultConfig.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="exceptionReport.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="log.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="network.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="packet.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="packet_Protocol.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="packetDataQueue.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="safeLock.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="util_common.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="util_FileManagement.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="util_String.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="util_Time.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="_json.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="buffer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="certifyData.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="connector.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="connector_impl.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="defaultConfig.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="exceptionReport.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="log.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="network.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="network_impl.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="packet.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="packetDataQueue.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="safeLock.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="util_common.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="util_FileManagement.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="util_String.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="util_Time.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
