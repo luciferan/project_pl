@@ -116,7 +116,7 @@ public:
 		CUserSession *pRet = nullptr;
 
 		{
-			ScopeLock lock(_Lock);
+			SafeLock lock(_Lock);
 
 			if( false == _FreeUserSessionList.empty() )
 			{
@@ -134,7 +134,7 @@ public:
 	{
 		//pUserSession->Release();
 		{
-			ScopeLock lock(_Lock);
+			SafeLock lock(_Lock);
 
 			if( std::find(_UsedUserSessionList.begin(), _UsedUserSessionList.end(), pUserSession) != _UsedUserSessionList.end() )
 			{

@@ -487,7 +487,7 @@ unsigned int WINAPI Network::UpdateThread(void *p)
 		biCurrTime = GetTimeMilliSec();
 
 		{
-			ScopeLock lock(ConnectorMgr._Lock);
+			SafeLock lock(ConnectorMgr._Lock);
 			for( auto pConnector : ConnectorMgr._UsedConnectorList )
 			{
 				if( pConnector->DoUpdate(biCurrTime) )

@@ -71,11 +71,11 @@ class CCircleBuffer
 	: public CBuffer
 {
 private:
-	CRITICAL_SECTION _cs;
+	Lock _cs;
 
 public:
-	CCircleBuffer() { InitializeCriticalSectionAndSpinCount(&_cs, 2000); }
-	virtual ~CCircleBuffer() { DeleteCriticalSection(&_cs); }
+	CCircleBuffer() {}
+	virtual ~CCircleBuffer() {}
 
 	ULONG Write(char IN *pSrc, ULONG IN nLen)
 	{

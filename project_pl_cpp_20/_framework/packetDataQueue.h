@@ -33,7 +33,7 @@ public:
 class CPacketDataQueue
 {
 protected:
-	CRITICAL_SECTION _cs[ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1];
+	Lock _cs[ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1];
 	HANDLE _hQueueEvent[ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1];
 
 	std::list<CPacketStruct*> lstPacketQueue[ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1];
@@ -44,8 +44,6 @@ public:
 	{
 		for( auto idx = 0; idx < ePacketDataQueue::MAX_PACKET_QUEUE_PHASE+1; ++idx )
 		{
-			//InitializeCriticalSection(&_cs[idx]);
-			InitializeCriticalSectionAndSpinCount(&_cs[idx], 2000);
 			_hQueueEvent[idx] = CreateEvent(0, 0, 0, 0);
 			lstPacketQueue[idx].clear();
 		}
@@ -54,7 +52,6 @@ public:
 	{
 		for( auto idx = 0; idx < ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1; ++idx )
 		{
-			DeleteCriticalSection(&_cs[idx]);
 			CloseHandle(_hQueueEvent[idx]);
 			lstPacketQueue[idx].clear();
 		}

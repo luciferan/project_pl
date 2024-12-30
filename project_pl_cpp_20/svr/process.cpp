@@ -143,7 +143,7 @@ unsigned int WINAPI App::ProcessThread(void *p)
 			sPacketHead *pHeader = (sPacketHead*)pPacket->_pBuffer;
 			if( P_AUTH == pHeader->dwProtocol )
 			{
-				ScopeLock lock(UserSessionMgr._Lock);
+				SafeLock lock(UserSessionMgr._Lock);
 				pUserSession = UserSessionMgr.GetFreeUserSession();
 				if( !pUserSession )
 				{
@@ -213,7 +213,7 @@ bool App::SessionRelease(INT64 biCurrTime)
 	std::list<CUserSession*> ReleaseSessionList = {};
 
 	{
-		ScopeLock lock(UserSessionMgr._Lock);
+		SafeLock lock(UserSessionMgr._Lock);
 		for( CUserSession *pSession : UserSessionMgr._UsedUserSessionList )
 		{
 			if( pSession->CheckUpdateTime(biCurrTime) )

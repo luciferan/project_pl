@@ -122,7 +122,7 @@ unsigned int WINAPI UpdateThread(void *p)
 		
 		//
 		{
-			ScopeLock lock(UserSessionMgr._Lock);
+			SafeLock lock(UserSessionMgr._Lock);
 
 			for( CUserSession *pSession : UserSessionMgr._UsedUserSessionList )
 			{

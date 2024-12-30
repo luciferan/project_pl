@@ -73,7 +73,7 @@ void CLog::FileWrite(const WCHAR *pwcsLogText)
 	CTimeSet CurrTime;
 	wstring wstrFileName = {};
 
-	ScopeLock lock(_FileLock);
+	SafeLock lock(_FileLock);
 	
 	switch( _eDivideType )
 	{

@@ -200,7 +200,7 @@ public:
 		CConnector *pConnector = nullptr;
 
 		{
-			ScopeLock lock(_Lock);
+			SafeLock lock(_Lock);
 
 			if( _FreeConnectorList.size() )
 			{
@@ -217,7 +217,7 @@ public:
 	void ReleaseConnector(CConnector *pConnector)
 	{
 		{
-			ScopeLock lock(_Lock);
+			SafeLock lock(_Lock);
 
 			//pConnector->SetDeactive();
 
@@ -234,7 +234,7 @@ public:
 		wstring wstrState = {};
 
 		{
-			ScopeLock lock(_Lock);
+			SafeLock lock(_Lock);
 			wstrState.append(FormatW(L"pool:%d, used:%d, free:%d", _ConnectorList.size(), _UsedConnectorList.size(), _FreeConnectorList.size()));
 		}
 

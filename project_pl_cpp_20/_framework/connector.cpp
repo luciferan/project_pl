@@ -88,7 +88,7 @@ int CConnector::AddSendQueue(char *pSendData, DWORD dwSendDataSize)
 	}
 
 	//
-	ScopeLock lock(_SendQueueLock);
+	SafeLock lock(_SendQueueLock);
 	_SendQueue.push(pSendBuffer);
 
 	return (int)_SendQueue.size();
@@ -101,7 +101,7 @@ int CConnector::SendPrepare()
 	if( 0 < _dwSendRef ) 
 		return 0;
 
-	ScopeLock lock(_SendQueueLock);
+	SafeLock lock(_SendQueueLock);
 
 	CNetworkBuffer *pSendData = _SendQueue.front();
 	_SendQueue.pop();
@@ -235,7 +235,7 @@ int CConnector::AddInnerQueue(char *pSendData, DWORD dwSendDataSize)
 	}
 
 	//
-	ScopeLock lock(_InnerQueueLock);
+	SafeLock lock(_InnerQueueLock);
 	_InnerQueue.push(pBuffer);
 
 	return (int)_InnerQueue.size();
@@ -248,7 +248,7 @@ int CConnector::InnerPrepare()
 	if( 0 < _dwInnerRef )
 		return 0;
 
-	ScopeLock lock(_InnerQueueLock);
+	SafeLock lock(_InnerQueueLock);
 
 	CNetworkBuffer *pPacket = _InnerQueue.front();
 	_InnerQueue.pop();
