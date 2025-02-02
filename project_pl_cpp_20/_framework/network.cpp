@@ -3,11 +3,14 @@
 #include "./connector.h"
 #include "./buffer.h"
 #include "./packetDataQueue.h"
-#include "./util.h"
-#include "./exceptionReport.h"
+#include "../_lib/util.h"
+#include "../_lib/exceptionReport.h"
+#include "../_lib/log.h"
 
-#include <string>
 #include <iostream>
+#include <string>
+#include <format>
+#include <source_location>
 
 //
 Network::Network(void)
@@ -31,38 +34,21 @@ bool Network::Initialize()
 
 	_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
 	if (NULL == _hIOCP) {
-		WriteMiniNetLog(L"error: MiniNet::Init(): NetworkHandle create fail");
+		LogError("NetworkHandle create fail");
 		return false;
 	}
 
-	// thread √ ±‚»≠
-	unsigned int uiThreadID = 0;
-	for (int iIndex = 0; iIndex < _config.workerThreadCount; ++iIndex) {
-		HANDLE hThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, NULL, CREATE_SUSPENDED, &uiThreadID);
-		if (NULL == hThread) {
-			WriteMiniNetLog(L"error: Network::Init(): WorkerThread create fail");
-			return false;
-		}
-
-		_threadHandleSet.insert(hThread);
+	// thread Ï¥àÍ∏∞Ìôî
+	for (int idx = 0; idx < _config.workerThreadCount; ++idx) {
+		_threads.emplace_back(thread{ &Network::WorkerThread, this, _threadStop.get_token()});
 	}
 
 	if (_config.doListen) {
-		HANDLE hThread = (HANDLE)_beginthreadex(NULL, 0, AcceptThread, NULL, CREATE_SUSPENDED, &uiThreadID);
-		if (NULL == hThread) {
-			WriteMiniNetLog(L"error: Network::Listen(): Accept thread create fail");
-			return false;
-		}
-		_threadHandleSet.insert(hThread);
+		_threads.emplace_back(thread{ &Network::AcceptThread, this, _threadStop.get_token() });
 	}
 
 	{
-		HANDLE hThread = (HANDLE)_beginthreadex(NULL, 0, UpdateThread, NULL, CREATE_SUSPENDED, &uiThreadID);
-		if (NULL == hThread) {
-			WriteMiniNetLog(L"error: Network::Init(): UpdateThread create fail");
-			return false;
-		}
-		_threadHandleSet.insert(hThread);
+		_threads.emplace_back(thread{ &Network::UpdateThread, this, _threadStop.get_token() });
 	}
 
 	return true;
@@ -77,26 +63,19 @@ bool Network::Finalize()
 
 bool Network::Start()
 {
-	InterlockedExchange((LONG*)&_dwRunning, 1);
-
-	for (HANDLE hThread : _threadHandleSet) {
-		ResumeThread(hThread);
-	}
+	_threadSuspended = 0;
+	_threadSuspended.notify_all();
 
 	return true;
 }
 
 bool Network::Stop()
 {
-	InterlockedExchange((LONG*)&_dwRunning, 0);
+	_threadStop.request_stop();
 
 	//
 	for (int nIndex = 0; nIndex < _config.workerThreadCount; ++nIndex) {
 		PostQueuedCompletionStatus(_hIOCP, 0, 0, NULL);
-	}
-
-	for (HANDLE hThread : _threadHandleSet) {
-		WaitForSingleObject(hThread, INFINITE);
 	}
 
 	if (INVALID_SOCKET != _ListenSock) {
@@ -104,23 +83,25 @@ bool Network::Stop()
 		_ListenSock = INVALID_SOCKET;
 	}
 
+	for (auto& t : _threads) {
+		t.join();
+	}
+
 	//
 	return true;
 }
 
-unsigned int WINAPI Network::AcceptThread(void *p)
+unsigned int Network::AcceptThread(stop_token token)
 {
-	Network &net = Network::GetInstance();
-	CConnectorMgr &ConnectMgr = CConnectorMgr::GetInstance();
+	Log(format("log: {} create", source_location::current().function_name()));
+	_threadSuspended.wait(1);
 
 	//
-	DWORD& dwRunning = net._dwRunning;
+	CConnectorMgr &ConnectMgr = CConnectorMgr::GetInstance();
+	CConnector* pConnector = nullptr;
 
-	HANDLE &hNetworkHandle = net._hIOCP;
-
-	NetworkConfig& config = net._config;
-
-	CConnector *pConnector = nullptr;
+	HANDLE &hNetworkHandle = _hIOCP;
+	NetworkConfig& config = _config;
 
 	INT32 iWSARet = 0;
 	HANDLE hRet = INVALID_HANDLE_VALUE;
@@ -132,7 +113,7 @@ unsigned int WINAPI Network::AcceptThread(void *p)
 	//
 	SOCKET listenSock = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
 	if (INVALID_SOCKET == listenSock) {
-		WriteMiniNetLog(L"error: MiniNet::AcceptThread(): WSASocket fail.");
+		Log("error: WSASocket fail.");
 		return 1;
 	}
 
@@ -140,40 +121,36 @@ unsigned int WINAPI Network::AcceptThread(void *p)
 	memset(&listenAddr, 0, sizeof(listenAddr));
 	listenAddr.sin_family = AF_INET;
 	listenAddr.sin_addr.s_addr = /*inet_addr(pszListenIP);*/ htonl(INADDR_ANY);
-	listenAddr.sin_port = htons(net._config.listenInfo.wPort);
+	listenAddr.sin_port = htons(_config.listenInfo.wPort);
 
 	//
 	if (SOCKET_ERROR == ::bind(listenSock, (SOCKADDR*)&listenAddr, sizeof(listenAddr))) {
 		int nErrorCode = WSAGetLastError();
-		WriteMiniNetLog(FormatW(L"error: MiniNet::AcceptThread(): bind fail. error %d", nErrorCode));
+		LogError(format("bind fail. error {}", nErrorCode));
 		return false;
 	}
 	if (SOCKET_ERROR == listen(listenSock, 10)) {
 		int nErrorCode = WSAGetLastError();
-		WriteMiniNetLog(FormatW(L"error: MiniNet::AcceptThread(): listen fail. error %d", nErrorCode));
+		LogError(format("listen fail. error {}", nErrorCode));
 		return false;
 	}
+	Log(format("log: accept bind port: {}", _config.listenInfo.wPort));
 
-	net._ListenSock = listenSock;
-	net._ListenAddr = listenAddr;
+	_ListenSock = listenSock;
+	_ListenAddr = listenAddr;
 
 	//
-	WriteMiniNetLog(L"log: MiniNet::AcceptThread() : start");
-	//g_Log.Write(L"log: MiniNet::AcceptThread() : start");
-
-
-	while( 1 == InterlockedExchange((long*)&dwRunning, dwRunning) )
-	{
+	Log(format("log: {}: start", source_location::current().function_name()));
+	while( !token.stop_requested() ) {
 		SOCKADDR_IN AcceptAddr;
 		memset(&AcceptAddr, 0, sizeof(AcceptAddr));
 		int iAcceptAddrLen = sizeof(AcceptAddr);
 
 		//
 		SOCKET AcceptSock = WSAAccept(listenSock, (SOCKADDR*)&AcceptAddr, &iAcceptAddrLen, NULL, NULL);
-		if( INVALID_SOCKET == AcceptSock )
-		{
+		if( INVALID_SOCKET == AcceptSock ) {
 			int nErrorCode = WSAGetLastError();
-			WriteMiniNetLog(FormatW(L"error: MiniNet::AcceptThread() : accept() fail. error:%d", nErrorCode));
+			LogError(format("accept fail. error{}", nErrorCode));
 			continue;
 		}
 
@@ -185,15 +162,12 @@ unsigned int WINAPI Network::AcceptThread(void *p)
 
 		//
 		pConnector = ConnectMgr.GetFreeConnector(); // new CConnector;
-		if( !pConnector )
-		{
-			WriteMiniNetLog(FormatW(L"error: MiniNet::AcceptThread() : connector create fail. socket:%d", AcceptSock));
+		if( !pConnector ) {
+			LogError(format("connector create fail. socket: {}", AcceptSock));
 			closesocket(AcceptSock);
 			continue;
-		}
-		else
-		{
-			WriteMiniNetLog(FormatW(L"log: MiniNet::AcceptThread() : <%d> connector create. socket:%d", pConnector->GetIndex(), AcceptSock));
+		} else {
+			//Log(format("<{}> connector create. socket:{}", pConnector->GetIndex(), AcceptSock));
 		}
 
 		//
@@ -207,7 +181,7 @@ unsigned int WINAPI Network::AcceptThread(void *p)
 		if( hNetworkHandle != hRet )
 		{
 			int nErrorCode = GetLastError();
-			WriteMiniNetLog(FormatW(L"error: MiniNet::AcceptThread() : <%d> CreateIoCompletionPort() fail. socket:%d. error:%d", pConnector->GetIndex(), AcceptSock, nErrorCode));
+			LogError(format("<{}> CreateIoCompletionPort() fail. socket:{}. error:{}", pConnector->GetUID(), AcceptSock, nErrorCode));
 			closesocket(AcceptSock);
 			ConnectMgr.ReleaseConnector(pConnector); //SAFE_DELETE(pConnector);
 			continue;
@@ -218,7 +192,7 @@ unsigned int WINAPI Network::AcceptThread(void *p)
 		//
 		if( 0 >= pConnector->RecvPrepare() )
 		{
-			WriteMiniNetLog(FormatW(L"error: MiniNet::AcceptThread() : <%d> RecvPrepare() fail. socket:%d", pConnector->GetIndex(), AcceptSock));
+			LogError(format("<{}> RecvPrepare() fail. socket:{}", pConnector->GetUID(), AcceptSock));
 			closesocket(AcceptSock);
 			ConnectMgr.ReleaseConnector(pConnector); //SAFE_DELETE(pSession);
 			continue;
@@ -232,25 +206,28 @@ unsigned int WINAPI Network::AcceptThread(void *p)
 			int nErrorCode = WSAGetLastError();
 			if( WSA_IO_PENDING != nErrorCode )
 			{
-				WriteMiniNetLog(FormatW(L"error: MiniNet::AcceptThread() : <%d> WSARecv fail. socket:%d. error:%d", pConnector->GetIndex(), AcceptSock, nErrorCode));
+				LogError(format("<{}> WSARecv fail. socket:{}. error:{}", pConnector->GetUID(), AcceptSock, nErrorCode));
 				closesocket(AcceptSock);
 				ConnectMgr.ReleaseConnector(pConnector); //SAFE_DELETE(pSession);
 			}
 		}
 	}
 
+	Log(format("log: {}: end", source_location::current().function_name()));
 	return 1;
 }
 
-unsigned int WINAPI Network::WorkerThread(void *p)
+unsigned int Network::WorkerThread(stop_token token)
 {
-	Network &Net = Network::GetInstance();
+	Log(format("log: {} create", source_location::current().function_name()));
+	_threadSuspended.wait(1);
+
 	CConnectorMgr &ConnectMgr = CConnectorMgr::GetInstance();
+	CConnector* pConnector = nullptr;
+
 	CRecvPacketQueue &RecvPacketQueue = CRecvPacketQueue::GetInstance();
 
 	//
-	DWORD &dwRunning = Net._dwRunning;
-
 	OVERLAPPED *lpOverlapped = nullptr;
 	OVERLAPPED_EX *lpOverlappedEx = nullptr;
 	int nSessionIndex = 0;
@@ -262,18 +239,16 @@ unsigned int WINAPI Network::WorkerThread(void *p)
 	int iRet = 0;
 	int nErrorCode = 0;
 
-	CConnector *pConnector = nullptr;
 	CNetworkBuffer *pNetworkBuffer = nullptr;
 
 	DWORD dwSendDataSize = 0;
 	DWORD dwRecvDataSize = 0;
 
-	HANDLE &hNetworkHandle = Net._hIOCP;
+	HANDLE &hNetworkHandle = _hIOCP;
 
 	//
-	WriteMiniNetLog(L"log: MiniNet::WorkerThread() : start"); 
-
-	while( 1 == InterlockedExchange((long*)&dwRunning, dwRunning) )
+	Log(format("log: {}: start", source_location::current().function_name())); 
+	while( !token.stop_requested() )
 	{
 		dwIOSize = 0;
 		bRet = FALSE;
@@ -286,7 +261,7 @@ unsigned int WINAPI Network::WorkerThread(void *p)
 				continue;
 
 			//
-			WriteMiniNetLog(FormatW(L"log: MiniNet::WorkerThread() : GetQueuedCompletionStatus() result false. lpOverlapped %08X. error:%d", lpOverlapped, nErrorCode));
+			//Log(format("log: WorkerThread(): GetQueuedCompletionStatus() result false. lpOverlapped {:x}. error:{}", (int)lpOverlapped, nErrorCode));
 
 			//
 			if( NULL == lpOverlapped )
@@ -296,7 +271,7 @@ unsigned int WINAPI Network::WorkerThread(void *p)
 			{
 				if( pConnector )
 				{
-					Net.Disconnect(pConnector);
+					Disconnect(pConnector);
 				}
 			}
 
@@ -306,24 +281,23 @@ unsigned int WINAPI Network::WorkerThread(void *p)
 		//
 		if( NULL == lpOverlapped )
 		{
-			WriteMiniNetLog(L"error: MiniNet::WorkerThread() : lpOverlapped is NULL");
+			Log("error: WorkerThread(): lpOverlapped is NULL");
 			continue;
 		}
-
-		//
 		lpOverlappedEx = (OVERLAPPED_EX*)lpOverlapped;
 
+		//
 		pConnector = lpOverlappedEx->pSession;
 		if( !pConnector )
 		{
-			WriteMiniNetLog(FormatW(L"error: MiniNet::WorkerThread() : Invalid connector %08X", pConnector));
+			//Log(format("error: WorkerThread(): Invalid connector {:x}", (int)pConnector));
 			continue;
 		}
 
 		pNetworkBuffer = lpOverlappedEx->pBuffer;
 		if( !pNetworkBuffer )
 		{
-			WriteMiniNetLog(FormatW(L"error: MiniNet::WorkerThread() : Invalid NetworkBuffer %08X", pNetworkBuffer));
+			//Log(format("error: WorkerThread() : Invalid NetworkBuffer {:x}", (int)pNetworkBuffer));
 			continue;
 		}
 
@@ -333,7 +307,7 @@ unsigned int WINAPI Network::WorkerThread(void *p)
 			//
 			if( pConnector )
 			{
-				WriteMiniNetLog(FormatW(L"log: MiniNet::WorkerThread() : <%d> Disconnect. IP %s, Socket %d", pConnector->GetIndex(), pConnector->GetDomain(), pConnector->GetSocket()));
+				//Log(format("log: WorkerThread() : <{}> Disconnect. IP {}, Socket {}", pConnector->GetIndex(), pConnector->GetDomain(), pConnector->GetSocket()));
 
 				if( INVALID_SOCKET != pConnector->GetSocket() )
 				{
@@ -359,7 +333,7 @@ unsigned int WINAPI Network::WorkerThread(void *p)
 			}
 			else
 			{
-				WriteMiniNetLog(FormatW(L"error: MiniNet::WorkerThread() : <%d> IoSize %d, pCurrSockEx %08X", dwIOSize, lpOverlappedEx));
+				//Log(format("error: WorkerThread() : unknown connector. IoSize {}, pCurrSockEx {:x}", dwIOSize, (int)lpOverlappedEx));
 			}
 
 			continue;
@@ -370,24 +344,24 @@ unsigned int WINAPI Network::WorkerThread(void *p)
 		{
 		case eNetworkBuffer::OP_SEND:
 			{
-				WriteMiniNetLog(FormatW(L"debug: MiniNet::WorkerThread() : <%d> SendResult : socket:%d. SendRequestSize %d, SendSize %d", pConnector->GetIndex(), pConnector->GetSocket(), (int)pNetworkBuffer->_nDataSize, dwIOSize));
-				WritePacketLog(FormatW(L"debug: MiniNet::WorkerThread(): <%d> SendData:", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwIOSize);
+				//Log(format("debug: WorkerThread() : <{}> SendResult : socket:{}. SendRequestSize {}, SendSize {}", pConnector->GetIndex(), pConnector->GetSocket(), (int)pNetworkBuffer->_nDataSize, dwIOSize));
+				//PacketLog(format(L"debug: WorkerThread(): <{}> SendData:", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwIOSize);
 
-				// ¿¸º€ øœ∑·
+				// Ï†ÑÏÜ° ÏôÑÎ£å
 				DWORD dwRemainData = pConnector->SendComplete(dwIOSize);
 
 				//
 				if( 0 < dwRemainData || 0 < pConnector->SendPrepare() )
 				{
-					// ∞Ëº” ¿¸º€
+					// Í≥ÑÏÜç Ï†ÑÏÜ°
 					iRet = WSASend(pConnector->GetSocket(), pConnector->GetSendWSABuffer(), 1, &dwSendDataSize, 0, pConnector->GetSendOverlapped(), NULL);
 					if( SOCKET_ERROR == iRet )
 					{
 						nErrorCode = WSAGetLastError();
 						if( WSA_IO_PENDING != nErrorCode )
 						{
-							WriteMiniNetLog(FormatW(L"error: MiniNet::WorkerThread() : <%d> WSASend() fail. socket:%d. error:%d", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
-							Net.Disconnect(pConnector);
+							//Log(format("error: WorkerThread() : <{}> WSASend() fail. socket:{}. error:{}", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
+							Disconnect(pConnector);
 						}
 					}
 				}
@@ -395,49 +369,49 @@ unsigned int WINAPI Network::WorkerThread(void *p)
 			break;
 		case eNetworkBuffer::OP_RECV:
 			{
-				WriteMiniNetLog(FormatW(L"debug: MiniNet::WorkerThread(): <%d> RecvResult : socket:%d. RecvDataSize %d", pConnector->GetIndex(), pConnector->GetSocket(), dwIOSize));
-				WritePacketLog(FormatW(L"debug: MiniNet::WorkerThread(): <%d> RecvData: ", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwIOSize);
+				//Log(format("debug: WorkerThread(): <{}> RecvResult : socket:{}. RecvDataSize {}", pConnector->GetIndex(), pConnector->GetSocket(), dwIOSize));
+				//PacketLog(format(L"debug: WorkerThread(): <{}> RecvData: ", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwIOSize);
 
-				// ºˆΩ≈ øœ∑·
+				// ÏàòÏã† ÏôÑÎ£å
 				int nResult = pConnector->RecvComplete(dwIOSize);
 				if( 0 > nResult )
 				{
-					WriteMiniNetLog(FormatW(L"error: MiniNet::WorkerThread(): <%d> CConnector::RecvComplete() fail. socket:%d", pConnector->GetIndex(), pConnector->GetSocket()));
-					Net.Disconnect(pConnector);
+					//Log(format("error: WorkerThread(): <{}> CConnector::RecvComplete() fail. socket:{}", pConnector->GetIndex(), pConnector->GetSocket()));
+					Disconnect(pConnector);
 				}
 				else
 				{
 					//
 					if( 0 < pConnector->RecvPrepare() )
 					{
-						// ∞Ëº” ºˆΩ≈
+						// Í≥ÑÏÜç ÏàòÏã†
 						iRet = WSARecv(pConnector->GetSocket(), pConnector->GetRecvWSABuffer(), 1, &dwRecvDataSize, &dwFlags, pConnector->GetRecvOverlapped(), NULL);
 						if( SOCKET_ERROR == iRet )
 						{
 							nErrorCode = WSAGetLastError();
 							if( WSA_IO_PENDING != nErrorCode )
 							{
-								WriteMiniNetLog(FormatW(L"error: MiniNet::WorkerThread(): <%d> WSARecv() fail. socket:%d. error:%d", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
-								Net.Disconnect(pConnector);
+								//Log(format("error: WorkerThread(): <{}> WSARecv() fail. socket:{}. error:{}", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
+								Disconnect(pConnector);
 							}
 						}
 					}
 					else
 					{
-						WriteMiniNetLog(FormatW(L"error: MiniNet::WorkerThread(): <%d> CConnector::RecvPrepare() fail. socket:%d", pConnector->GetIndex(), pConnector->GetSocket()));
+						//Log(format("error: WorkerThread(): <{}> CConnector::RecvPrepare() fail. socket:{}", pConnector->GetIndex(), pConnector->GetSocket()));
 					}
 				}
 			}
 			break;
 		case eNetworkBuffer::OP_INNER:
 			{
-				WriteMiniNetLog(FormatW(L"debug: MiniNet::WorkerThread() : <%d> InnerResult : socket:%d. RecvDataSize %d", pConnector->GetIndex(), pConnector->GetSocket(), dwIOSize));
-				WritePacketLog(FormatW(L"debug: MiniNet::WorkerThread(): <%d> InnerData: ", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwIOSize);
+				//Log(format("debug: WorkerThread() : <{}> InnerResult : socket:{}. RecvDataSize {}", pConnector->GetIndex(), pConnector->GetSocket(), dwIOSize));
+				//PacketLog(format(L"debug: WorkerThread(): <{}> InnerData: ", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwIOSize);
 
-				// ≥ª∫Œ ºˆΩ≈√≥∏Æ
+				// ÎÇ¥Î∂Ä ÏàòÏã†Ï≤òÎ¶¨
 				pConnector->InnerComplete(dwIOSize);
 
-				// ≥ª∫Œ ¿¸º€√≥∏Æ
+				// ÎÇ¥Î∂Ä Ï†ÑÏÜ°Ï≤òÎ¶¨
 				int nRemainData = pConnector->InnerPrepare();
 				if( 0 < nRemainData )
 				{
@@ -445,85 +419,84 @@ unsigned int WINAPI Network::WorkerThread(void *p)
 					if( 0 == bRet )
 					{
 						nErrorCode = WSAGetLastError();
-						WriteMiniNetLog(FormatW(L"error: MiniNet::WorkerThread(): <%d> PostQueuedCompletionStatus() fail. socket:%d. error:%d", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
-						Net.Disconnect(pConnector);
+						//Log(format("error: WorkerThread(): <{}> PostQueuedCompletionStatus() fail. socket:{}. error:{}", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
+						Disconnect(pConnector);
 					}
 				}
 			}
 			break;
 		default:
 			{
-				// ππø©?
+				// Î≠êÏó¨?
 			}
 			break;
 		}
 	}
 
-	//
+	Log(format("log: {}: end", source_location::current().function_name()));
 	return 0;
 }
 
-unsigned int WINAPI Network::UpdateThread(void *p)
+unsigned int Network::UpdateThread(stop_token token)
 {
-	Network &Net = Network::GetInstance();
-	CConnectorMgr &ConnectorMgr = CConnectorMgr::GetInstance();
+	_threadSuspended.wait(1);
 
 	//
-	DWORD &dwRunning = Net._dwRunning;
+	CConnectorMgr &ConnectorMgr = CConnectorMgr::GetInstance();
+	CConnector* pConnector = nullptr;
 
-	CConnector *pConnector = nullptr;
+	//
 	void *pParam = nullptr;
 
 	INT64 biCurrTime = 0;
 	INT64 biReleaseCheck = GetTimeMilliSec() + (MILLISEC_A_SEC * 30);
 
-	std::list<CConnector*> ReleaseConnectorList = {};
+	std::list<CConnector*> ReleaseConnectorList {};
 
 	//
-	WriteMiniNetLog(L"log: MiniNet::UpdateThread() : start");
-
-	while( 1 == InterlockedExchange((long*)&dwRunning, dwRunning) )
+	Log(format("log: {}: start", source_location::current().function_name()));
+	while( !token.stop_requested() )
 	{
 		biCurrTime = GetTimeMilliSec();
 
 		{
-			SafeLock lock(ConnectorMgr._Lock);
-			for( auto pConnector : ConnectorMgr._UsedConnectorList )
-			{
-				if( pConnector->DoUpdate(biCurrTime) )
-				{
-					if( false == pConnector->GetActive() && false == pConnector->GetUsed() )
-					{
-						ReleaseConnectorList.push_back(pConnector);
-						continue;
-					}
-				}
+			//SafeLock lock(ConnectorMgr._lock);
+			//for( auto pConnector : ConnectorMgr._usedList )
+			//{
+			//	if( pConnector->DoUpdate(biCurrTime) )
+			//	{
+			//		if( false == pConnector->GetActive() && false == pConnector->GetUsed() )
+			//		{
+			//			ReleaseConnectorList.push_back(pConnector);
+			//			continue;
+			//		}
+			//	}
 
-				pConnector->CheckHeartbeat(biCurrTime);
-			}
+			//	pConnector->CheckHeartbeat(biCurrTime);
+			//}
 		}
 
 		{
-			if( false == ReleaseConnectorList.empty() )
-			{
-				for( auto pConnector : ReleaseConnectorList )
-				{
-					ConnectorMgr.ReleaseConnector(pConnector);
-				}
+			//if( false == ReleaseConnectorList.empty() )
+			//{
+			//	for( auto pConnector : ReleaseConnectorList )
+			//	{
+			//		ConnectorMgr.ReleaseConnector(pConnector);
+			//	}
 
-				ReleaseConnectorList.clear();
-			}
+			//	ReleaseConnectorList.clear();
+			//}
 		}
 
 		{
-			Net.DoUpdate(biCurrTime);
+			DoUpdate(biCurrTime);
 		}
 
 		//
-		Sleep(1);
+		this_thread::sleep_for(1ms);
 	}
 
-	//
+	Log(format("log: {}: end", source_location::current().function_name()));
 	return 0;
 }
 
@@ -542,11 +515,10 @@ bool Network::lookup_host(const char *hostname, std::string &hostIP)
 	int ret = getaddrinfo(szDomain, NULL, &hints, &result);
 	if( 0 == ret )
 	{
-		char addrstr[100] = {0,};
-		void *ptr = nullptr;
+		char addrstr[100] {0,};
+		void* ptr{ nullptr };
 		inet_ntop(result->ai_family, result->ai_addr->sa_data, addrstr, _countof(addrstr));
-		switch( result->ai_family )
-		{
+		switch( result->ai_family ) {
 		case AF_INET:
 			ptr = &((sockaddr_in*)result->ai_addr)->sin_addr;
 			break;
@@ -569,11 +541,14 @@ bool Network::lookup_host(const char *hostname, std::string &hostIP)
 
 CConnector* Network::Connect(WCHAR *pwcsDomain, const WORD wPort)
 {
-	CConnector *pConnector = CConnectorMgr::GetInstance().GetFreeConnector(); //new CConnector;
-	if( !pConnector )
+	CConnector *pConn = CConnectorMgr::GetInstance().GetFreeConnector(); //new CConnector;
+	if (!pConn) {
 		return nullptr;
+	}
+	bool bActive = true;
 
-	pConnector->SetDomain(pwcsDomain, wPort);
+	//
+	pConn->SetDomain(pwcsDomain, wPort);
 
 	//
 	SOCKADDR_IN SockAddr;
@@ -582,133 +557,109 @@ CConnector* Network::Connect(WCHAR *pwcsDomain, const WORD wPort)
 	BOOL bSockOpt = TRUE;
 	int nRet = 0;
 
-	SOCKET connectSocket = INVALID_SOCKET;
-
-	auto failProc = [&]() -> void {
-		if (INVALID_SOCKET != connectSocket) {
-			closesocket(connectSocket);
-		}
-		CConnectorMgr::GetInstance().ReleaseConnector(pConnector);
-	};
-
 	//
 	SockAddr.sin_family = AF_INET;
-
-	if( iswalpha(pwcsDomain[0]) )
-	{
-		//struct hostent *host = gethostbyname(pConnector->GetDomainA());
+	if( iswalpha(pwcsDomain[0]) ) {
+		//struct hostent *host = gethostbyname(pConn->GetDomainA());
 		//if( NULL == host )
 		//{
 		//	goto ProcFail;
 		//}
 		//SockAddr.sin_addr.s_addr = *(unsigned long*)host->h_addr_list[0];
 
-		string strHostIP = {};
-		bool bRet = lookup_host(pConnector->GetDomainA(), strHostIP);
-		if( bRet )
-		{
+		string strHostIP{};
+		bool bRet = lookup_host(pConn->GetDomainA(), strHostIP);
+		if( bRet ) {
 			InetPtonA(AF_INET, strHostIP.c_str(), &SockAddr.sin_addr);
+		} else {
+			LogError("GetAddrInfo fail");
+			//failProc();
+			//return nullptr;
 		}
-		else
-		{
-			WriteMiniNetLog(L"error: Network::Connect(): GetAddrInfo fail");
-			failProc();
-			return nullptr;
-		}
-	}
-	else
-	{
+	} else {
 		InetPtonW(AF_INET, pwcsDomain, &SockAddr.sin_addr);
 	}
 
 	SockAddr.sin_port = htons(wPort);
 
-	// º“ƒœ ª˝º∫
-	connectSocket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
-	if( INVALID_SOCKET == connectSocket )
-	{
-		WriteMiniNetLog(L"error: MiniNet::Connect(): WSASocket() fail");
-		
+	// ÏÜåÏºì ÏÉùÏÑ±
+	SOCKET sock = pConn->SetSocket(WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED));
+	if( INVALID_SOCKET == pConn->GetSocket() ) {
+		LogError("WSASocket() fail");
+		CConnectorMgr::GetInstance().ReleaseConnector(pConn);
+		return nullptr;
+	} else {
+		bSockOpt = TRUE;
+		setsockopt(sock, SOL_SOCKET, SO_DONTLINGER, (char*)&bSockOpt, sizeof(BOOL));
+		bSockOpt = TRUE;
+		setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (char*)&bSockOpt, sizeof(BOOL));
 	}
 
-	bSockOpt = TRUE;
-	setsockopt(connectSocket, SOL_SOCKET, SO_DONTLINGER, (char*)&bSockOpt, sizeof(BOOL));
-	bSockOpt = TRUE;
-	setsockopt(connectSocket, IPPROTO_TCP, TCP_NODELAY, (char*)&bSockOpt, sizeof(BOOL));
-
-	// ø¨∞· Ω√µµ
-	nRet = connect(connectSocket, (SOCKADDR*)&SockAddr, sizeof(SockAddr));
-	if( SOCKET_ERROR == nRet )
-	{
+	//
+	// Ïó∞Í≤∞ ÏãúÎèÑ
+	nRet = connect(sock, (SOCKADDR*)&SockAddr, sizeof(SockAddr));
+	if (SOCKET_ERROR == nRet) {
 		int nErrorCode = WSAGetLastError();
-		WriteMiniNetLog(FormatW(L"error: MiniNet::Connect(): connect() fail. error:%d", nErrorCode));
-		failProc();
+		LogError(format("connect() fail.error:{}", nErrorCode));
+		CConnectorMgr::GetInstance().ReleaseConnector(pConn);
+		return nullptr;
+	}
+	memcpy((void*)&pConn->_SockAddr, (void*)&SockAddr, sizeof(SockAddr));
+
+	//Log(format("log: Network::Connect(): <{}> Domain: {}, Port: {}, Socket: {}", pConn->GetUID(), pwcsDomain, wPort, sock));
+
+	//
+	HANDLE hRet = CreateIoCompletionPort((HANDLE)sock, _hIOCP, (ULONG_PTR)pConn, 0);
+	if(_hIOCP != hRet ) {
+		CConnectorMgr::GetInstance().ReleaseConnector(pConn);
 		return nullptr;
 	}
 
-	WriteMiniNetLog(FormatW(L"log: MiniNet::Connect(): <%d> Domain: %s, Port: %d, Socket: %d", pConnector->GetIndex(), pwcsDomain, wPort, connectSocket));
-
-	//
-	pConnector->SetSocket(connectSocket);
-	memcpy((void*)&pConnector->_SockAddr, (void*)&SockAddr, sizeof(SockAddr));
-
-	//
-	HANDLE hRet = CreateIoCompletionPort((HANDLE)connectSocket, _hIOCP, (ULONG_PTR)pConnector, 0);
-	if(_hIOCP != hRet )
-	{
-		failProc();
-		return nullptr;
-	}
-
-	// µ•¿Ã≈Õ ºˆΩ≈ ¥Î±‚
+	// Îç∞Ïù¥ÌÑ∞ ÏàòÏã† ÎåÄÍ∏∞
 	DWORD dwRecvDataSize = 0;
-
-	if( 0 >= pConnector->RecvPrepare() )
-	{
-		WriteMiniNetLog(FormatW(L"error: MiniNet::Connect(): <%d> RecvPrepare() fail", pConnector->GetIndex()));
-		failProc();
+	if( 0 >= pConn->RecvPrepare() ) {
+		Log(format("<{}> RecvPrepare() fail", pConn->GetUID()));
+		CConnectorMgr::GetInstance().ReleaseConnector(pConn);
 		return nullptr;
 	}
 
 	//
 	DWORD dwFlags = 0;
-	nRet = WSARecv(pConnector->GetSocket(), pConnector->GetRecvWSABuffer(), 1, &dwRecvDataSize, &dwFlags, pConnector->GetRecvOverlapped(), NULL);
-	if( SOCKET_ERROR == nRet )
-	{
+	nRet = WSARecv(pConn->GetSocket(), pConn->GetRecvWSABuffer(), 1, &dwRecvDataSize, &dwFlags, pConn->GetRecvOverlapped(), NULL);
+	if( SOCKET_ERROR == nRet ) {
 		int nErrorCode = WSAGetLastError();
-		if( WSA_IO_PENDING != nErrorCode )
-		{
-			WriteMiniNetLog(FormatW(L"error: MiniNet::Connect(): WSARecv() fail. %d, Socket %d. error:() %d", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
-			failProc();
+		if( WSA_IO_PENDING != nErrorCode ) {
+			Log(format("error: Network::Connect(): WSARecv() fail. {}, Socket {}. error:{}", pConn->GetUID(), pConn->GetSocket(), nErrorCode));
+			CConnectorMgr::GetInstance().ReleaseConnector(pConn);
 			return nullptr;
 		}
 	}
 
 	//
-	return pConnector;
+	return pConn;
 }
 
 bool Network::Disconnect(CConnector *pConnector)
 {
 	if( !pConnector )
 	{
-		WriteMiniNetLog(FormatW(L"error: MiniNet::Disconnect(): Invalid session object %08X", pConnector));
+		LogError(format("Invalid session object {:x}", reinterpret_cast<intptr_t>(pConnector)));
 		return false;
 	}
 
 	//pConnector->SetDeactive();
 
 	//
-	WriteMiniNetLog(FormatW(L"log: MiniNet::Disconnect(): <%d> Disconnect. socket %d", pConnector->GetIndex(), pConnector->GetSocket()));
+	Log(format("info: <{}> Disconnect. socket {}", pConnector->GetUID(), pConnector->GetSocket()));
 
 	//
-	if( pConnector->GetSocket() )
+	if( INVALID_SOCKET != pConnector->GetSocket() )
 	{
 		shutdown(pConnector->GetSocket(), SD_BOTH);
 		closesocket(pConnector->GetSocket());
-	}
 
-	pConnector->SetSocket(INVALID_SOCKET);
+		pConnector->SetSocket(INVALID_SOCKET);
+	}
 
 	//
 	if( pConnector->GetRecvRef() ) PostQueuedCompletionStatus(_hIOCP, 0, (ULONG_PTR)pConnector, pConnector->GetRecvOverlapped());
@@ -734,29 +685,29 @@ eResultCode Network::Write(CConnector *pConnector, char *pSendData, int iSendDat
 {
 	if( !pConnector )
 	{
-		WriteMiniNetLog(FormatW(L"error: MiniNet::Write(): Invalid session object %08X %d", pConnector, (pConnector ? pConnector->GetIndex() : -1)));
+		//LogError(format("Invalid session object %08X %d", pConnector, (pConnector ? pConnector->GetUID() : -1)));
 		return eResultCode::RESULT_FAIL;
 	}
 	if( INVALID_SOCKET == pConnector->GetSocket() )
 	{
-		WriteMiniNetLog(FormatW(L"error: MiniNet::Write(): <%d> Invalid socket %d", pConnector->GetIndex(), pConnector->GetSocket()));
+		LogError(format("<{}> Invalid socket {}", pConnector->GetUID(), pConnector->GetSocket()));
 		return eResultCode::RESULT_SOCKET_DISCONNECTED;
 	}
 
-	// ¿¸º€µ•¿Ã≈Õ º¬∆√
+	// Ï†ÑÏÜ°Îç∞Ïù¥ÌÑ∞ ÏÖãÌåÖ
 	if( 0 > pConnector->AddSendQueue(pSendData, iSendDataSize) )
 	{
-		WriteMiniNetLog(FormatW(L"error: MiniNet::Write(): <%d> Invalid send data %d", pConnector->GetIndex(), pConnector->GetSocket()));
+		LogError(format("<{}> Invalid send data {}", pConnector->GetUID(), pConnector->GetSocket()));
 		return eResultCode::RESULT_FAIL;
 	}
 
 	//
 	if( 0 >= pConnector->GetSendRef() )
 	{
-		// ¡ˆ±› ¿¸º€
+		// ÏßÄÍ∏à Ï†ÑÏÜ°
 		if( 0 > pConnector->SendPrepare() )
 		{
-			WriteMiniNetLog(FormatW(L"error: MiniNet::Write(): <%d> SendPrepare() fail", pConnector->GetIndex()));
+			LogError(format("<{}> SendPrepare() fail", pConnector->GetUID()));
 			return eResultCode::RESULT_FAIL;
 		}
 
@@ -769,7 +720,7 @@ eResultCode Network::Write(CConnector *pConnector, char *pSendData, int iSendDat
 			int nErrorCode = WSAGetLastError();
 			if( WSA_IO_PENDING != nErrorCode )
 			{
-				WriteMiniNetLog(FormatW(L"error: MiniNet::Write(): <%d> WSASend() fail. socket:%d. error:%d", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
+				LogError(format("<{}> WSASend() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
 				return eResultCode::RESULT_FAIL;
 			}
 		}
@@ -781,35 +732,31 @@ eResultCode Network::Write(CConnector *pConnector, char *pSendData, int iSendDat
 
 eResultCode Network::InnerWrite(CConnector *pConnector, char *pSendData, int nSendDataSize)
 {
-	if( !pConnector )
-	{
-		WriteMiniNetLog(FormatW(L"error: MiniNet::InnerWrite(): Invalid session object %08X %d", pConnector, (pConnector ? pConnector->GetIndex() : -1)));
+	if( !pConnector ) {
+		//LogError(format("Invalid session object {:x} {}", reinterpret_cast<intptr_t>(pConnector), (pConnector ? pConnector->GetUID() : -1)));
 		eResultCode::RESULT_FAIL;
 	}
-	if( INVALID_SOCKET == pConnector->GetSocket() )
-	{
-		WriteMiniNetLog(FormatW(L"error: MiniNet::InnerWrite(): <%d> Invalid socket %d", pConnector->GetIndex(), pConnector->GetSocket()));
+	if( INVALID_SOCKET == pConnector->GetSocket() ) {
+		LogError(format("<{}> Invalid socket {}", pConnector->GetUID(), pConnector->GetSocket()));
 		eResultCode::RESULT_FAIL;
 	}
 
-	// µ•¿Ã≈Õ º¬∆√
+	// Îç∞Ïù¥ÌÑ∞ ÏÖãÌåÖ
 	pConnector->AddInnerQueue(pSendData, nSendDataSize);
 
 	//
 	if( 0 >= pConnector->GetInnerRef() )
 	{
-		// ¡ˆ±›√≥∏Æ
-		if( 0 > pConnector->InnerPrepare() )
-		{
-			WriteMiniNetLog(FormatW(L"error: MiniNet::InnerWrite(): <%d> InnerPrepare() fail", pConnector->GetIndex()));
+		// ÏßÄÍ∏àÏ≤òÎ¶¨
+		if( 0 > pConnector->InnerPrepare() ) {
+			LogError(format("<{}> InnerPrepare() fail", pConnector->GetUID()));
 			return eResultCode::RESULT_FAIL;
 		}
 
 		BOOL bRet = PostQueuedCompletionStatus(_hIOCP, nSendDataSize, (ULONG_PTR)pConnector, pConnector->GetInnerOverlapped());
-		if( 0 == bRet )
-		{
+		if( 0 == bRet ) {
 			int nErrorCode = GetLastError();
-			WriteMiniNetLog(FormatW(L"error: MiniNet::InnerWrite(): <%d> PostQueuedCompletionStatus() fail. socket:%d. error:%d", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
+			LogError(format("<{}> PostQueuedCompletionStatus() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
 			return eResultCode::RESULT_FAIL;
 		}
 	}
@@ -819,28 +766,3 @@ eResultCode Network::InnerWrite(CConnector *pConnector, char *pSendData, int nSe
 }
 
 //
-void WritePacketLog(std::wstring str, const char *pPacketData, int nPacketDataSize)
-{
-	return;
-
-	//
-	WCHAR wcsLogBuffer[MAX_PACKET_BUFFER_SIZE + 1024 + 1] = {0,};
-
-	int nLen = 0;
-	nLen += _snwprintf_s(wcsLogBuffer+nLen, MAX_PACKET_BUFFER_SIZE, MAX_PACKET_BUFFER_SIZE -nLen, L"%s", str.c_str());
-
-	if( 1024 < nPacketDataSize )
-	{
-		for( int idx = 0; idx < 6; ++idx )
-			nLen += _snwprintf_s(wcsLogBuffer + nLen, MAX_PACKET_BUFFER_SIZE, MAX_PACKET_BUFFER_SIZE - nLen, L"%02X", pPacketData[idx]);
-		nLen += _snwprintf_s(wcsLogBuffer + nLen, MAX_PACKET_BUFFER_SIZE, MAX_PACKET_BUFFER_SIZE - nLen, L". connot write packetlog. too long.");
-	}
-	else
-	{
-		for( int idx = 0; idx < nPacketDataSize; ++idx )
-			nLen += _snwprintf_s(wcsLogBuffer + nLen, MAX_PACKET_BUFFER_SIZE, MAX_PACKET_BUFFER_SIZE - nLen, L"%02X", pPacketData[idx]);
-		nLen += _snwprintf_s(wcsLogBuffer + nLen, MAX_PACKET_BUFFER_SIZE, MAX_PACKET_BUFFER_SIZE - nLen, L"\0");
-	}
-
-	WriteMiniNetLog(wcsLogBuffer);
-}

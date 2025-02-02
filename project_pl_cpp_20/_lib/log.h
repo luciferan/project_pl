@@ -5,7 +5,10 @@
 //
 #include <windows.h>
 #include <wchar.h>
+
 #include <string>
+#include <format>
+#include <source_location>
 
 #include "safeLock.h"
 
@@ -50,12 +53,19 @@ public:
 
 	void Write(std::wstring wstr);
 	void Write(const WCHAR *pwcsFormat, ...);
-
+	void Write(const std::string& str);
 };
 
 //
 extern CLog g_Log;
 extern CLog g_PerformanceLog;
+
+extern void Log(const std::string& str);
+extern void Log(const std::wstring& str);
+extern void LogError(const std::string& str, std::source_location loc = std::source_location::current());
+extern void LogDebug(const std::string& str, std::source_location loc = std::source_location::current());
+//extern void WriteMiniNetLog(std::wstring wstr);
+extern void PacketLog(const std::wstring& str, const char* pPacketData, int nPacketDataSize);
 
 //
 #endif //__LOG_H__

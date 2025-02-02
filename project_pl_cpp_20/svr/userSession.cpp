@@ -1,7 +1,7 @@
 #include "../_framework/Connector.h"
 #include "../_framework/Packet.h"
-#include "../_framework/util.h"
 #include "../_framework/Packet_Protocol.h"
+#include "../_lib/util.h"
 
 #include "UserSession.h"
 
@@ -21,7 +21,7 @@ int CUserSession::Clear()
 
 int CUserSession::Release()
 {
-	// todo: ∞¥√º ¡§∏Æ ¿€æ˜
+	// todo: Í∞ùÏ≤¥ Ï†ïÎ¶¨ ÏûëÏóÖ
 	Clear();
 
 	//InterlockedExchange(&_dwActive, 0);
@@ -46,6 +46,7 @@ int CUserSession::MessageProcess(char *pData, int nLen)
 	{
 	case P_ECHO:
 		{
+			Log(format("MessageProcess {}: {}", GetIndex(), dwProtocol));
 			SendPacketData(dwProtocol, pPacketData, dwPackethLength);
 		}
 		break;
@@ -67,7 +68,7 @@ int CUserSession::DoUpdate(INT64 uiCurrTime)
 	//
 	return 0;
 }
-//
+
 //int CUserSession::SendPacket(DWORD dwProtocol, char *pPacket, DWORD dwPacketLength)
 //{
 //	if( !_pConnector )
@@ -91,6 +92,8 @@ int CUserSession::DoUpdate(INT64 uiCurrTime)
 
 eResultCode CUserSession::SendPacketData(DWORD dwProtocol, char *pData, DWORD dwSendDataSize)
 {
+	Log("info: SendPacketData");
+
 	//CNetworkBuffer SendBuffer;
 	char SendBuffer[MAX_PACKET_BUFFER_SIZE] = {};
 	DWORD dwSendBufferSize = sizeof(SendBuffer);

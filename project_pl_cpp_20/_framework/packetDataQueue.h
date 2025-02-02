@@ -8,7 +8,7 @@
 #include <queue>
 
 #include "Buffer.h"
-#include "../_framework/SafeLock.h"
+#include "../_lib/SafeLock.h"
 //#include "../_framework/Packet.h"
 
 //

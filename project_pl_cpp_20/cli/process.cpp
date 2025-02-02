@@ -4,308 +4,216 @@
 #include "../_framework/PacketDataQueue.h"
 #include "../_framework/Packet.h"
 #include "../_framework/Packet_Protocol.h"
+#include "../_lib/log.h"
 
 #include "UserSession.h"
 //#include "Config.h"
 
 #include <iostream>
+#include <format>
+#include <source_location>
 
 //
-WCHAR HOST_ADDRESS[1024+1] = L"127.0.0.1";
-WORD HOST_PORT = 20010;
-
-//
-void WriteMiniNetLog(std::wstring wstr)
+bool App::Init()
 {
-	//return;
+	Network& net = Network::GetInstance();
+	net._config.workerThreadCount = 2;
+	net._config.doListen = false;
 
-	g_Log.Write(wstr);
+	if (false == net.Initialize()) {
+		LogError("Network Initialize fail");
+		return false;
+	}
+
+	_threads.emplace_back(jthread{ &App::ProcessThread, this, _threadStop.get_token() });
+	_threads.emplace_back(jthread{ &App::CommandThread, this, _threadStop.get_token() });
+	_threads.emplace_back(jthread{ &App::UpdateThread, this, _threadStop.get_token() });
+
+	return true;
 }
 
-//bool LoadConfig()
-//{
-//	g_Config.LoadConfig();
-//	return true;
-//}
-
-unsigned int WINAPI ProcessThread(void *p)
+bool App::Start()
 {
-	Network &Net = Network::GetInstance();
-	CRecvPacketQueue &RecvPacketQueue = CRecvPacketQueue::GetInstance();
-	CSendPacketQueue &SendPacketQueue = CSendPacketQueue::GetInstance();
-	CUserSessionMgr &UserSessionMgr = CUserSessionMgr::GetInstance();
+	_threadSuspended = 0;
+	_threadSuspended.notify_all();
+
+	Network& net = Network::GetInstance();
+	if (false == net.Start()) {
+		LogError("Network start fail");
+		return false;
+	}
+	return true;
+}
+
+void App::Wait()
+{
+	_threadWait.wait(1);
+}
+
+bool App::Stop()
+{
+	Network& net = Network::GetInstance();
+	if (!net.Stop()) {
+		LogError("Network stop fail");
+	}
+	_threadStop.request_stop();
+	CRecvPacketQueue::GetInstance().ForceActivateQueueEvent();
+
+	_threadWait = 0;
+	_threadWait.notify_all();
+
+	return true;
+}
+
+int App::ProcessThread(stop_token token)
+{
+	Network& net = Network::GetInstance();
+	CRecvPacketQueue& recvPacketQueue = CRecvPacketQueue::GetInstance();
+	CUserSessionMgr& sessionMgr = CUserSessionMgr::GetInstance();
+
+	CConnector* pConnector{ nullptr };
+	CUserSession* pUserSession{ nullptr };
+	CPacketStruct* pPacket{ nullptr };
+
+	DWORD dwPacketSize{ 0 };
 
 	//
-	DWORD &dwRunning = Net._dwRunning;
-
-	CConnector *pConnector = nullptr;
-	CUserSession *pUserSession = nullptr;
-	CPacketStruct *pPacket = nullptr;
-
-	DWORD dwPacketSize = 0;
-
-	//
-	while( 1 == InterlockedExchange(&dwRunning, dwRunning) )
-	{
-		pPacket = RecvPacketQueue.Pop();
-		if( !pPacket )
+	_threadSuspended.wait(1);
+	Log(format("{} start", source_location::current().function_name()));
+	while (!token.stop_requested()) {
+		pPacket = recvPacketQueue.Pop();
+		if (!pPacket) {
 			continue;
+		}
 
-		sPacketHead *pHead = (sPacketHead*)pPacket->_pBuffer;
-		sPacketTail *pTail = (sPacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(sPacketTail));
-		if( pTail->dwCheckTail != PACKET_CHECK_TAIL_KEY )
-		{
-			g_Log.Write(L"Invliad packet");
-			Net.Disconnect(pConnector);
+		sPacketHead* pHead = (sPacketHead*)pPacket->_pBuffer;
+		sPacketTail* pTail = (sPacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(sPacketTail));
+		if (pTail->dwCheckTail != PACKET_CHECK_TAIL_KEY) {
+			LogError("invalid packet");
+			net.Disconnect(pConnector);
 		}
 
 		pConnector = pPacket->pSession;
-		if( !pConnector )
-		{
-			RecvPacketQueue.ReleasePacketStruct(pPacket); //SAFE_DELETE(pPacket);
+		if (!pConnector) {
+			recvPacketQueue.ReleasePacketStruct(pPacket);
 			continue;
 		}
 
-		//
-		pUserSession = (CUserSession*)pConnector->GetParam();
-		if( nullptr == pUserSession )
-		{
-			sPacketHead *pHeader = (sPacketHead*)pPacket->_pBuffer;
-			if( P_AUTH == pHeader->dwProtocol )
-			//if( 1 )
-			{
-				pUserSession = UserSessionMgr.GetFreeUserSession();
-				if( !pUserSession )
-				{
-					g_Log.Write(L"CUserSessionMgr::GetFreeUserSession() fail");
-				}
-				else
-				{
+		if (pUserSession = (CUserSession*)pConnector->GetParam()) {
+			pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
+		} else {
+			sPacketHead* pHeader = (sPacketHead*)pPacket->_pBuffer;
+			if (P_AUTH == pHeader->dwProtocol) {
+				if (pUserSession = sessionMgr.GetFreeUserSession()) {
 					pConnector->SetParam((void*)pUserSession);
 					pUserSession->SetConnector(pConnector);
+				} else {
+					LogError("UserSessionMgr::GetFreeUserSession fail");
 				}
-			}
-			else
-			{
-				g_Log.Write(L"Invliad packet");
-				Net.Disconnect(pConnector);
+			} else {
+				LogError("invalid packet");
+				net.Disconnect(pConnector);
 			}
 		}
-		else
-		{
-			pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
-		}
-
-		//
-		RecvPacketQueue.ReleasePacketStruct(pPacket); //SAFE_DELETE(pPacket);
+		 
+		recvPacketQueue.ReleasePacketStruct(pPacket);
 	}
 
-	//
-	return 0;
-};
-
-//
-unsigned int WINAPI UpdateThread(void *p)
-{
-	Network &Net = Network::GetInstance();
-	CUserSessionMgr &UserSessionMgr = CUserSessionMgr::GetInstance();
-
-	//
-	DWORD &dwRunning = Net._dwRunning;
-	INT64 uiCurrTime = 0;
-
-	CUserSession *pUserSession = nullptr;
-
-	while( 1 == InterlockedExchange(&dwRunning, dwRunning) )
-	{
-		uiCurrTime = GetTimeMilliSec();
-		
-		//
-		{
-			SafeLock lock(UserSessionMgr._Lock);
-
-			for( CUserSession *pSession : UserSessionMgr._UsedUserSessionList )
-			{
-				pSession->DoUpdate(uiCurrTime);
-			}
-		}
-
-		//
-		Sleep(1);
-	}
-
-	//
+	Log(format("{} end", source_location::current().function_name()));
 	return 0;
 }
 
-unsigned int WINAPI CommandThread(void *p)
+int App::UpdateThread(stop_token token)
 {
-	Network &Net = Network::GetInstance();
+	Network& net = Network::GetInstance();
+	CUserSessionMgr& sessionMgr = CUserSessionMgr::GetInstance();
+
+	CUserSession* pUerSession{ nullptr };
+	INT64 uiCurrTime{ 0 };
+	std::list<CUserSession*> sessionList{};
 
 	//
-	DWORD &dwRunning = Net._dwRunning;
-	INT64 biCurrTime = 0;
+	_threadSuspended.wait(1);
+	Log(format("{} start", source_location::current().function_name()));
+	while (!token.stop_requested()) {
+		sessionMgr.GetUserSessionList(sessionList);
 
-	//
-	char cmd[512+1] = {};
-	CConnector *pConnector = nullptr;
-	CUserSession *pUserSession = nullptr;
-
-	WCHAR wszHostIP[] = L"127.0.0.1";
-	WORD wHostPort = 20010;
-
-	g_Log.Write(L"log: CommandThread() start.");
-
-	while( 1 == InterlockedExchange(&dwRunning, dwRunning) )
-	{
-		if( 1 )
-		{
-			gets_s(cmd, 512);
-			string strCommand = cmd;
-			if( 0 >= strCommand.length() )
-				continue;
-
-			vector<string> tokens;
-			TokenizeA(strCommand, tokens, " ");
-
-			if( 0 == strncmp(tokens[0].c_str(), "/connect", tokens[0].length()) )
-			{
-				pConnector = Net.Connect(HOST_ADDRESS, HOST_PORT);
-				if( !pConnector )
-				{
-					g_Log.Write(L"info: connect fail.");
-				}
-				else
-				{
-					g_Log.Write(L"info: connected.");
-
-					pUserSession = CUserSessionMgr::GetInstance().GetFreeUserSession();
-					if( !pUserSession )
-					{
-						g_Log.Write(L"error: CUserSessionMgr::GetFreeUserSession() fail");
-						Net.Disconnect(pConnector);
-					}
-					else
-					{
-						pConnector->SetParam(pUserSession);
-						pUserSession->SetConnector(pConnector);
-					}
-				}
-			}
-			else if( 0 == strncmp(tokens[0].c_str(), "/disconnect", tokens[0].length()) )
-			{
-				if( pConnector )
-					Net.Disconnect(pConnector);
-			}
-			else if( 0 == strncmp(tokens[0].c_str(), "/auth", tokens[0].length()) )
-			{
-				if( pUserSession ) pUserSession->ReqAuth();
-			}
-			else if( 0 == strncmp(tokens[0].c_str(), "/send", tokens[0].length()) )
-			{
-				if( pUserSession ) pUserSession->ReqEcho();
-			}
-			else if( 0 == strncmp(tokens[0].c_str(), "/sendloop", tokens[0].length()) )
-			{
-				int loopcount = 5;
-				if( 2 <= tokens.size() )
-					loopcount = atoi(tokens[1].c_str());
-				if( 1 > loopcount )
-					loopcount = 1;
-
-				for( int cnt = 0; cnt < loopcount; ++cnt )
-				{
-					if( pUserSession ) 
-						pUserSession->ReqEcho();
-					Sleep(500);
-				}
-			}
-			else if( 0 == strncmp(tokens[0].c_str(), "/exit", tokens[0].length()) )
-			{
-				Net.Stop();
-				break;
-			}
-		}
-
-		//
-		if( 0 )
-		{
-			// connect
-			pConnector = Net.Connect(HOST_ADDRESS, HOST_PORT);
-			if( !pConnector )
-			{
-				g_Log.Write(L"info: connect fail.");
-			}
-			else
-			{
-				g_Log.Write(L"info: connected.");
-
-				CUserSession *pUserSession = CUserSessionMgr::GetInstance().GetFreeUserSession();
-				if( !pUserSession )
-				{
-					g_Log.Write(L"error: CUserSessionMgr::GetFreeUserSession() fail");
-					Net.Disconnect(pConnector);
-				}
-				else
-				{
-					pConnector->SetParam(pUserSession);
-					pUserSession->SetConnector(pConnector);
-				}
-			}
-
-			Sleep(10);
-
-			// auth
-			{
-				struct
-				{
-					DWORD dwLength;
-					DWORD dwProtocol;
-					sP_AUTH Data;
-				} SendData;
-				memset((void*)&SendData, 0, sizeof(SendData));
-
-				SendData.dwLength = sizeof(SendData);
-				SendData.dwProtocol = P_AUTH;
-
-				if( pConnector )
-					pConnector->AddSendData((char*)&SendData, sizeof(SendData));
-			}
-
-			Sleep(10);
-
-			// send loop 3
-			{
-				struct
-				{
-					DWORD dwLength;
-					DWORD dwProtocol;
-					sP_ECHO Data;
-				} SendData;
-				memset((void*)&SendData, 0, sizeof(SendData));
-
-				SendData.dwLength = sizeof(SendData);
-				SendData.dwProtocol = P_ECHO;
-				string echomsg = "abcdefg12345";
-				memcpy(SendData.Data.echoData, echomsg.c_str(), echomsg.length());
-
-				for( int cnt = 0; cnt < 3; ++cnt )
-				{
-					if( pConnector ) pConnector->AddSendData((char*)&SendData, sizeof(SendData));
-					Sleep(1);
-				}
-			}
-
-			// disconnect
-			if( pConnector )
-				Net.Disconnect(pConnector);
-
-			Sleep(10);
+		for (CUserSession* pSession : sessionList) {
+			pSession->DoUpdate(uiCurrTime);
 		}
 	}
 
-	g_Log.Write(L"log: msgprocThread() end.");
+	Log(format("{} end", source_location::current().function_name()));
+	return 0;
+}
+
+int App::CommandThread(stop_token token)
+{
+	Network& net = Network::GetInstance();
+
+	CConnector* pConnector{ nullptr };
+	CUserSession* pSession{ nullptr };
+
+	INT64 biCurrTime{ 0 };
+	char cmd[1024]{};
+
+	WCHAR wszHostIP[] = L"127.0.0.1";
+	WORD wHostPort = 60010;
 
 	//
+	_threadSuspended.wait(1);
+	Log(format("{} start", source_location::current().function_name()));
+	while (!token.stop_requested()) {
+		gets_s(cmd, 1024);
+
+		string cmdStr = cmd;
+		if (0 >= cmdStr.length()) {
+			continue;
+		}
+
+		vector<string> cmdTokens{};
+		TokenizeA(cmdStr, cmdTokens, " ");
+		if (0 == strncmp(cmdTokens[0].c_str(), "/connect", cmdTokens[0].length())) {
+			Log(format(L"info: try connect: {} {}", wszHostIP, wHostPort));
+			if (pConnector = net.Connect(wszHostIP, wHostPort)) {
+				Log("info: connected");
+
+				if (pSession = CUserSessionMgr::GetInstance().GetFreeUserSession()) {
+					pConnector->SetParam(pSession);
+					pSession->SetConnector(pConnector);
+				} else {
+					LogError("CUserSesionMgr::GetFreeUserSession fail");
+					net.Disconnect(pConnector);
+				}
+			}
+		} else if (0 == strncmp(cmdTokens[0].c_str(), "/disconnect", cmdTokens[0].length())) {
+			if (pConnector) net.Disconnect(pConnector);
+		} else if (0 == strncmp(cmdTokens[0].c_str(), "/auth", cmdTokens[0].length())) {
+			if (pSession) pSession->ReqAuth();
+		} else if (0 == strncmp(cmdTokens[0].c_str(), "/send", cmdTokens[0].length())) {
+			if (pSession) pSession->ReqEcho();
+		} else if (0 == strncmp(cmdTokens[0].c_str(), "/sendLoop", cmdTokens[0].length())) {
+			int loopCount{ 5 };
+			if (2 <= cmdTokens.size()) {
+				loopCount = atoi(cmdTokens[1].c_str());
+			}
+			if (1 > loopCount) {
+				loopCount = 1;
+			}
+
+			for (int cnt = 0; cnt < loopCount; ++cnt) {
+				if (pSession) {
+					pSession->ReqEcho();
+				}
+				this_thread::sleep_for(100ms);
+			}
+
+		} else if (0 == strncmp(cmdTokens[0].c_str(), "/exit", cmdTokens[0].length())) {
+			Stop();
+			break;
+		}
+	}
+
+	Log(format("{} end", source_location::current().function_name()));
 	return 0;
 }

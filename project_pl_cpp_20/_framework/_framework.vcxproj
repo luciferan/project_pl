@@ -18,6 +18,29 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="buffer.h" />
+    <ClInclude Include="certifyConvertData.h" />
+    <ClInclude Include="certifyData.h" />
+    <ClInclude Include="connector.h" />
+    <ClInclude Include="defaultConfig.h" />
+    <ClInclude Include="network.h" />
+    <ClInclude Include="packet.h" />
+    <ClInclude Include="packetDataQueue.h" />
+    <ClInclude Include="packet_Protocol.h" />
+    <ClInclude Include="_common_variable.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="buffer.cpp" />
+    <ClCompile Include="certifyData.cpp" />
+    <ClCompile Include="connector.cpp" />
+    <ClCompile Include="connector_impl.cpp" />
+    <ClCompile Include="defaultConfig.cpp" />
+    <ClCompile Include="network.cpp" />
+    <ClCompile Include="network_impl.cpp" />
+    <ClCompile Include="packet.cpp" />
+    <ClCompile Include="packetDataQueue.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -146,46 +169,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClInclude Include="buffer.h" />
-    <ClInclude Include="certifyConvertData.h" />
-    <ClInclude Include="certifyData.h" />
-    <ClInclude Include="connector.h" />
-    <ClInclude Include="defaultConfig.h" />
-    <ClInclude Include="exceptionReport.h" />
-    <ClInclude Include="log.h" />
-    <ClInclude Include="network.h" />
-    <ClInclude Include="packet.h" />
-    <ClInclude Include="packetDataQueue.h" />
-    <ClInclude Include="packet_Protocol.h" />
-    <ClInclude Include="safeLock.h" />
-    <ClInclude Include="util.h" />
-    <ClInclude Include="util_common.h" />
-    <ClInclude Include="util_FileManagement.h" />
-    <ClInclude Include="util_String.h" />
-    <ClInclude Include="util_Time.h" />
-    <ClInclude Include="_common_variable.h" />
-    <ClInclude Include="_json.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="buffer.cpp" />
-    <ClCompile Include="certifyData.cpp" />
-    <ClCompile Include="connector.cpp" />
-    <ClCompile Include="connector_impl.cpp" />
-    <ClCompile Include="defaultConfig.cpp" />
-    <ClCompile Include="exceptionReport.cpp" />
-    <ClCompile Include="log.cpp" />
-    <ClCompile Include="network.cpp" />
-    <ClCompile Include="network_impl.cpp" />
-    <ClCompile Include="packet.cpp" />
-    <ClCompile Include="packetDataQueue.cpp" />
-    <ClCompile Include="safeLock.cpp" />
-    <ClCompile Include="util_common.cpp" />
-    <ClCompile Include="util_FileManagement.cpp" />
-    <ClCompile Include="util_String.cpp" />
-    <ClCompile Include="util_Time.cpp" />
-    <ClCompile Include="_json.cpp" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

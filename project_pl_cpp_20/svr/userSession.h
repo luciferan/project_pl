@@ -8,7 +8,7 @@
 #include <list>
 #include <queue>
 
-#include "../_framework/SafeLock.h"
+#include "../_lib/safeLock.h"
 
 //
 class CConnector;

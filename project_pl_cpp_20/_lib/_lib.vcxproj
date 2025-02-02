@@ -21,9 +21,10 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{4330cbe9-0d20-467a-a3c7-4cb99ac79f4a}</ProjectGuid>
-    <RootNamespace>svr</RootNamespace>
+    <ProjectGuid>{b35e8ec5-5f7e-4ac9-8126-dd24df1213c5}</ProjectGuid>
+    <RootNamespace>lib</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>_lib</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -40,13 +41,13 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -84,7 +85,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -99,7 +99,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -139,23 +138,25 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="connector_impl.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="network_impl.cpp" />
-    <ClCompile Include="process.cpp" />
-    <ClCompile Include="userSession.cpp" />
+    <ClCompile Include="exceptionReport.cpp" />
+    <ClCompile Include="log.cpp" />
+    <ClCompile Include="safeLock.cpp" />
+    <ClCompile Include="util_common.cpp" />
+    <ClCompile Include="util_FileManagement.cpp" />
+    <ClCompile Include="util_String.cpp" />
+    <ClCompile Include="util_time.cpp" />
+    <ClCompile Include="_json.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="process.h" />
-    <ClInclude Include="userSession.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\_framework\_framework.vcxproj">
-      <Project>{fa98a219-24e6-4ef3-aa9e-d4a0b5cd2384}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\_lib\_lib.vcxproj">
-      <Project>{b35e8ec5-5f7e-4ac9-8126-dd24df1213c5}</Project>
-    </ProjectReference>
+    <ClInclude Include="exceptionReport.h" />
+    <ClInclude Include="log.h" />
+    <ClInclude Include="safeLock.h" />
+    <ClInclude Include="util.h" />
+    <ClInclude Include="util_common.h" />
+    <ClInclude Include="util_FileManagement.h" />
+    <ClInclude Include="util_String.h" />
+    <ClInclude Include="util_time.h" />
+    <ClInclude Include="_json.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

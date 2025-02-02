@@ -1,7 +1,10 @@
 #include "../_framework/Connector.h"
 #include "../_framework/Packet.h"
-#include "../_framework/util.h"
 #include "../_framework/Packet_Protocol.h"
+#include "../_lib/util.h"
+
+#include <string>
+#include <format>
 
 //
 int CConnector::DataParsing()
@@ -123,9 +126,9 @@ wstring CConnector::GetStateReport()
 	wstring wstrReport = {};
 
 	if( GetActive() )
-		wstrReport.append(FormatW(L"[%d] connected: %d,", GetUniqueIndex(), GetSocket()));
+		wstrReport.append(FormatW(L"[%d] connected: %d,", GetUID(), GetSocket()));
 	else
-		wstrReport.append(FormatW(L"[%d] disconnected: ", GetUniqueIndex()));
+		wstrReport.append(FormatW(L"[%d] disconnected: ", GetUID()));
 
 	wstrReport.append(FormatW(L"sq:%d,", _SendQueue.size()));
 	wstrReport.append(FormatW(L"rb:(%d/%d),", _RecvDataBuffer.GetDataSize(), _RecvDataBuffer.GetBufferSize()));

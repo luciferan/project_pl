@@ -8,7 +8,7 @@
 #include <list>
 #include <queue>
 
-#include "../_framework/safeLock.h"
+#include "../_lib/safeLock.h"
 
 //
 class CConnector;
@@ -135,6 +135,14 @@ public:
 			{
 			}
 		}
+	}
+
+	void GetUserSessionList(std::list<CUserSession*>& userList)
+	{
+		userList.clear();
+
+		SafeLock lock(_Lock);
+		userList = _UsedUserSessionList;
 	}
 };
 

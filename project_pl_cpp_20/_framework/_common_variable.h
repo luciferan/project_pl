@@ -24,7 +24,6 @@ enum eNetwork
 	MAX_LOG_BUFFER_SIZE = 1024 * 10,
 };
 
-
 #define SAFE_DELETE(ptr) { if(ptr) delete ptr; ptr = nullptr; }
 
 

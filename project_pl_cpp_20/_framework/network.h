@@ -13,10 +13,26 @@
 
 #include <queue>
 #include <string>
-
 #include <set>
+#include <list>
+#include <array>
+
+#include <thread>
+#include <atomic>
+#include <functional>
+#include <source_location>
 
 #include "./_common_variable.h"
+
+////
+//extern void WriteMiniNetLog(std::wstring wstr);
+//extern void WritePacketLog(std::wstring str, const char* pPacketData, int nPacketDataSize);
+//extern void Log(const std::wstring& wstr);
+//extern void Log(const std::string& str);
+//extern void ErrorLog(const std::string& str, std::source_location loc = std::source_location::current());
+
+//
+using namespace std;
 
 class CConnector;
 
@@ -38,29 +54,24 @@ class Network
 public:
 	NetworkConfig _config;
 
-	HANDLE _hIOCP = INVALID_HANDLE_VALUE;
+	HANDLE _hIOCP{ INVALID_HANDLE_VALUE };
 
-	//HANDLE _hAcceptThread = INVALID_HANDLE_VALUE;
-	//HANDLE _hWorkerThread[eNetwork::MAX_THREAD_COUNT] = {INVALID_HANDLE_VALUE,};
-	//HANDLE _hUpdateThread = INVALID_HANDLE_VALUE;
-	std::set<HANDLE> _threadHandleSet{};
+	std::list<thread> _threads{};
 
 	//
-	//char _szListenIP[eNetwork::MAX_LEN_IP4_STRING + 1] = {0,};
-	//WCHAR _wcsListenIP[eNetwork::MAX_LEN_IP4_STRING + 1] = {0,};
-	//WORD _wListenPort = 0;
-
-	SOCKET _ListenSock = INVALID_SOCKET;
-	SOCKADDR_IN _ListenAddr = {0,};
+	SOCKET _ListenSock{ INVALID_SOCKET };
+	SOCKADDR_IN _ListenAddr {};
 
 	//
-	DWORD _dwRunning = 0;
-	INT64 _biUpdateTime = 0;
+	std::stop_source _threadStop;
+	atomic<int> _threadSuspended{ 1 };
+	atomic<int> _threadWait{ 0 };
+	INT64 _biUpdateTime{ 0 };
 
 	//
 private:
 	Network(void);
-	~Network(void);
+	virtual ~Network(void);
 
 public:
 	static Network& GetInstance()
@@ -74,10 +85,10 @@ public:
 
 	bool Start();
 	bool Stop();
-
-	static unsigned int WINAPI AcceptThread(void *p);
-	static unsigned int WINAPI WorkerThread(void *p);
-	static unsigned int WINAPI UpdateThread(void *p);
+	
+	unsigned int WorkerThread(stop_token token);
+	unsigned int AcceptThread(stop_token token);
+	unsigned int UpdateThread(stop_token token);
 
 	eResultCode DoUpdate(INT64 biCurrTime);
 
@@ -90,10 +101,6 @@ public:
 	eResultCode Write(CConnector *pSession, char *pSendData, int iSendDataSize);
 	eResultCode InnerWrite(CConnector *pSession, char *pSendData, int nSendDataSize);
 };
-
-//
-extern void WriteMiniNetLog(std::wstring wstr);
-extern void WritePacketLog(std::wstring str, const char *pPacketData, int nPacketDataSize);
 
 //
 #endif //__NETWORK_H__

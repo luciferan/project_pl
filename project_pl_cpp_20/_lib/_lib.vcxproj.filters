@@ -5,70 +5,68 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="헤더 파일">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
     <Filter Include="리소스 파일">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="_common_variable.h">
+    <ClCompile Include="util_time.cpp">
       <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="buffer.h">
+    </ClCompile>
+    <ClCompile Include="util_String.cpp">
       <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="certifyConvertData.h">
+    </ClCompile>
+    <ClCompile Include="_json.cpp">
       <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="certifyData.h">
+    </ClCompile>
+    <ClCompile Include="exceptionReport.cpp">
       <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="connector.h">
+    </ClCompile>
+    <ClCompile Include="log.cpp">
       <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="defaultConfig.h">
+    </ClCompile>
+    <ClCompile Include="safeLock.cpp">
       <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="network.h">
+    </ClCompile>
+    <ClCompile Include="util_common.cpp">
       <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="packet.h">
+    </ClCompile>
+    <ClCompile Include="util_FileManagement.cpp">
       <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="packet_Protocol.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="packetDataQueue.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="buffer.cpp">
+    <ClInclude Include="util_time.h">
       <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="certifyData.cpp">
+    </ClInclude>
+    <ClInclude Include="util_String.h">
       <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="connector.cpp">
+    </ClInclude>
+    <ClInclude Include="_json.h">
       <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="connector_impl.cpp">
+    </ClInclude>
+    <ClInclude Include="exceptionReport.h">
       <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="defaultConfig.cpp">
+    </ClInclude>
+    <ClInclude Include="log.h">
       <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="network.cpp">
+    </ClInclude>
+    <ClInclude Include="safeLock.h">
       <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="network_impl.cpp">
+    </ClInclude>
+    <ClInclude Include="util.h">
       <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="packet.cpp">
+    </ClInclude>
+    <ClInclude Include="util_common.h">
       <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="packetDataQueue.cpp">
+    </ClInclude>
+    <ClInclude Include="util_FileManagement.h">
       <Filter>소스 파일</Filter>
-    </ClCompile>
+    </ClInclude>
   </ItemGroup>
 </Project>

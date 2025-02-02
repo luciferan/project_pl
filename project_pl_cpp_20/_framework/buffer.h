@@ -6,7 +6,7 @@
 #include <winsock2.h>
 #include <WS2tcpip.h>
 
-#include "safeLock.h"
+#include "../_lib/safeLock.h"
 
 #include <string>
 

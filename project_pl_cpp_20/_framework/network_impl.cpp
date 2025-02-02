@@ -1,7 +1,7 @@
 #include "./network.h"
 #include "./Connector.h"
-#include "./Log.h"
-#include "./util.h"
+#include "../_lib/Log.h"
+#include "../_lib/util.h"
 
 #include <string>
 

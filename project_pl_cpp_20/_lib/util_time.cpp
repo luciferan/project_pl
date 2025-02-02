@@ -1,15 +1,11 @@
-#include "util_Time.h"
-#include "log.h"
+#include "./util_time.h"
 
-#include <stdio.h>
-
-//
-int GetTimeSec()
+INT32 GetTimeSec()
 {
 	struct __timeb32 tTime;
 	_ftime32_s(&tTime);
 
-	return (int)(tTime.time);
+	return (INT32)(tTime.time);
 }
 
 INT64 GetTimeMilliSec()
@@ -51,12 +47,13 @@ void CTimeSet::SetTime()
 
 void CTimeSet::SetTime(__time64_t tTime, bool bGMT)
 {
-	struct tm *ptmTime = nullptr;
+	struct tm* ptmTime = nullptr;
 
-	if( bGMT )
+	if (bGMT) {
 		_tGMT = tTime;
-	else
+	} else {
 		_tGMT = ConvertLC2GM(tTime);
+	}
 
 	_gmtime64_s(&_tmGMT, &_tGMT);
 
@@ -66,7 +63,7 @@ void CTimeSet::SetTime(__time64_t tTime, bool bGMT)
 
 void CTimeSet::SetTime(int nYear, int nMon, int nDay, int nHour, int nMin, int nSec, bool bGMT)
 {
-	struct tm tmTime = {0,};
+	struct tm tmTime = { 0, };
 
 	tmTime.tm_year = nYear - 1900;
 	tmTime.tm_mon = nMon - 1;
@@ -74,14 +71,15 @@ void CTimeSet::SetTime(int nYear, int nMon, int nDay, int nHour, int nMin, int n
 	tmTime.tm_hour = nHour;
 	tmTime.tm_min = nMin;
 	tmTime.tm_sec = nSec;
-	tmTime.tm_isdst = -1; 
+	tmTime.tm_isdst = -1;
 
-	struct tm *ptmTime = nullptr;
+	struct tm* ptmTime = nullptr;
 
-	if( bGMT )
+	if (bGMT) {
 		_tGMT = _mkgmtime64(&tmTime);
-	else
+	} else {
 		_tGMT = ConvertLC2GM(tmTime);
+	}
 
 	_gmtime64_s(&_tmGMT, &_tGMT);
 
@@ -99,7 +97,7 @@ __time64_t CTimeSet::ConvertLC2GM(__time64_t tTime)
 	__time64_t tGMT = 0;
 	__time64_t tLocal = 0;
 
-	struct tm *ptmLocal = NULL;
+	struct tm* ptmLocal{ nullptr };
 
 	_time64(&tGMT);
 	localtime_s(ptmLocal, &tGMT);
@@ -116,7 +114,7 @@ __time64_t CTimeSet::ConvertLC2GM(struct tm tmLocal)
 	__time64_t tGMT = 0;
 	__time64_t tLocal = 0;
 
-	struct tm *ptmLocal = NULL;
+	struct tm* ptmLocal{ nullptr };
 
 	_time64(&tGMT);
 	localtime_s(ptmLocal, &tGMT);

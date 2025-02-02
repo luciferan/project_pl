@@ -10,13 +10,16 @@
 #include <unordered_map>
 #include <queue>
 #include <list>
+#include <atomic>
 
-#include "./buffer.h"
+#include "../_lib/log.h"
 
-#include "./safeLock.h"
-#include "./util_String.h"
+#include "../_lib/safeLock.h"
+#include "../_lib/util_String.h"
 
 #include "./_common_variable.h"
+
+#include "./buffer.h"
 
 //
 using namespace std;
@@ -25,77 +28,86 @@ class CConnector;
 //
 struct OVERLAPPED_EX
 {
-	OVERLAPPED overlapped = {0,};
+	OVERLAPPED overlapped {0,};
 
-	CConnector *pSession = nullptr;
-	CNetworkBuffer *pBuffer = nullptr;
+	CConnector* pSession{ nullptr };
+	CNetworkBuffer* pBuffer{ nullptr };
 
 	//
 	void ResetOverlapped() { memset(&overlapped, 0, sizeof(OVERLAPPED)); }
 };
 
 //
-class CConnector 
+class CConnector
 {
 protected:
-	DWORD _dwUniqueIndex = 0;
+	DWORD _dwUid{ 0 };
+	DWORD _dwIndex{ 0 };
 	//DWORD _dwUsed = 0;
 	//DWORD _dwActive = 0;
 
-	void *_pParam = nullptr;
+	void* _param{ nullptr };
 
-	SOCKET _Socket = INVALID_SOCKET;
+	SOCKET _socket{ INVALID_SOCKET };
+
+	int _refCnt{ 0 };
 
 public:
 	SOCKADDR_IN _SockAddr = {0,};
 
-	char _szDomain[eNetwork::MAX_LEN_DOMAIN_STRING + 1] = {0,};
-	WCHAR _wcsDomain[eNetwork::MAX_LEN_DOMAIN_STRING + 1] = {0,};
-	WORD _wPort = 0;
+	char _szDomain[eNetwork::MAX_LEN_DOMAIN_STRING + 1] {0,};
+	WCHAR _wcsDomain[eNetwork::MAX_LEN_DOMAIN_STRING + 1] {0,};
+	WORD _wPort{ 0 };
 
 	// send
 	OVERLAPPED_EX _SendRequest; 
 	Lock _SendQueueLock;
-	queue<CNetworkBuffer*> _SendQueue = {}; // 여기있는걸 send 합니다. 최대 갯수를 넘어가면 전송량에 비해 보내야되는 패킷이 많은것
-	DWORD _dwSendRef = 0;
+	queue<CNetworkBuffer*> _SendQueue{}; // 여기있는걸 send 합니다. 최대 갯수를 넘어가면 전송량에 비해 보내야되는 패킷이 많은것
+	DWORD _dwSendRef{ 0 };
 
 	// recv
 	OVERLAPPED_EX _RecvRequest;
 	CCircleBuffer _RecvDataBuffer; // recv 받으면 여기에 쌓습니다. 오버되면 연결을 터트립니다.
-	DWORD _dwRecvRef = 0;
+	DWORD _dwRecvRef{ 0 };
 
 	// inner
 	OVERLAPPED_EX _InnerRequest;
 	Lock _InnerQueueLock;
-	queue<CNetworkBuffer*> _InnerQueue = {}; //
-	DWORD _dwInnerRef = 0;
+	queue<CNetworkBuffer*> _InnerQueue{}; //
+	DWORD _dwInnerRef{ 0 };
 
 	//
-	INT64 _biUpdateTimer = 0;
-	INT64 _biHeartbeatTimer = 0;
+	INT64 _biUpdateTimer{ 0 };
+	INT64 _biHeartbeatTimer{ 0 };
 
 	//
 public:
-	CConnector(DWORD dwUniqueIndex = 0);
+	CConnector() = delete;
+	//CConnector(const CConnector&) = delete;
+	CConnector(DWORD uid = 0);
 	virtual ~CConnector();
 
 	bool Initialize();
-	bool Finalize();
+	bool Release();
 
-	DWORD GetUniqueIndex() { return _dwUniqueIndex; }
-	DWORD GetIndex() { return _dwUniqueIndex; }
+	DWORD GetUID() const { return _dwUid; }
+	DWORD SetIndex(DWORD dwIndex) { return _dwIndex = dwIndex; }
+	DWORD GetIndex() const { return _dwIndex; }
+
+	void IncRef() { InterlockedIncrement((DWORD*)&_refCnt); }
+	void DecRef() { InterlockedDecrement((DWORD*)&_refCnt); }
 	
 	//void SetActive() { InterlockedExchange(&_dwActive, 1); }
 	//void SetDeactive() { InterlockedExchange(&_dwActive, 0); }
 	//DWORD GetActive() { return InterlockedExchange(&_dwActive, _dwActive); }
 
-	void* SetParam(void *pParam) { return _pParam = pParam; }
-	void* GetParam() { return _pParam; }
-	bool GetUsed() { return (nullptr != _pParam); }
+	void* SetParam(void *param) { return _param = param; }
+	void* GetParam() { return _param; }
+	bool GetUsed() { return (nullptr != _param); }
 
-	SOCKET SetSocket(SOCKET socket) { return _Socket = socket; }
-	SOCKET GetSocket() { return _Socket; }
-	bool GetActive() { return (INVALID_SOCKET != _Socket); }
+	SOCKET SetSocket(SOCKET socket) { return _socket = socket; }
+	SOCKET GetSocket() { return _socket; }
+	bool GetActive() { return (INVALID_SOCKET != _socket); }
 
 	void SetDomain(WCHAR *pwcsDomain, WORD wPort);
 	void GetSocket2IP(char *pszIP);
@@ -147,99 +159,132 @@ public:
 };
 
 //
-class CConnectorMgr 
+class CConnectorMgr
 {
 private:
-	DWORD _dwConnectorIndex = 0;
-	DWORD _dwMaxConnectorCount = 0;
+	DWORD _dwConnectorUID{ 0 };
+	DWORD _dwConnectorIndex{ 0 };
+	DWORD _dwPoolSize{ 0 };
 
-	list<CConnector> _ConnectorList = {}; // 생성된 전체 리스트
-	list<CConnector*> _FreeConnectorList = {}; // 사용할수있는
+	Lock _lock;
+	list<CConnector*> _poolList{}; // 생성된 전체 리스트
+	list<CConnector*> _freeList{}; // 사용할 수 있는
+	//list<CConnector*> _usedList{}; // 사용중인
+	unordered_map<DWORD, CConnector*> _usedList{};
+	list<CConnector*> _releaseList{}; // 정리예정 리스트
 
 public:
-	list<CConnector*> _UsedConnectorList = {}; // 사용중인
-	Lock _Lock;
 
 	//
 private:
-	CConnectorMgr(int nConnectorMax = 2000)
+	CConnectorMgr(DWORD poolSize = 5)
 	{
-		for( int cnt = 0; cnt < nConnectorMax; ++cnt )
-		{
-			CConnector *pData = new CConnector(GetUniqueIndex());
-			
-			_ConnectorList.push_back(*pData);
-			_FreeConnectorList.push_back(pData);
-		}
-
-		_dwMaxConnectorCount = nConnectorMax;
+		AllocPool(poolSize);
 	}
 
 	~CConnectorMgr(void)
 	{
-		_UsedConnectorList.clear();
-		_FreeConnectorList.clear();
-		_ConnectorList.clear();
+		_usedList.clear();
+		_freeList.clear();
+		//_poolList.clear();
+		for (CConnector* p : _poolList) {
+			delete p;
+		}
+	}
+
+	DWORD AllocPool(DWORD allocSize)
+	{
+		SafeLock lock(_lock);
+
+		for (DWORD cnt = 0; cnt < allocSize; ++cnt) {
+			CConnector* p = new CConnector(MakeUID());
+			_poolList.emplace_back(p);
+			_freeList.emplace_back(p);
+		}
+		return _dwPoolSize = (DWORD)_poolList.size();
 	}
 
 public:
 	static CConnectorMgr& GetInstance()
 	{
-		static CConnectorMgr *pInstance = new CConnectorMgr();
+		static CConnectorMgr* pInstance = new CConnectorMgr();
 		return *pInstance;
 	}
 	
-	DWORD GetUniqueIndex() 
+	DWORD MakeUID() 
 	{
-		InterlockedIncrement((DWORD*)&_dwConnectorIndex); 
-		return _dwConnectorIndex; 
+		InterlockedIncrement((DWORD*)&_dwConnectorUID);
+		return _dwConnectorUID;
+	}
+
+	DWORD MakeIndex() 
+	{
+		InterlockedIncrement((DWORD*)&_dwConnectorIndex);
+		return _dwConnectorIndex;
 	}
 
 	CConnector* GetFreeConnector()
 	{
-		CConnector *pConnector = nullptr;
-
-		{
-			SafeLock lock(_Lock);
-
-			if( _FreeConnectorList.size() )
-			{
-				pConnector = _FreeConnectorList.front();
-				_FreeConnectorList.pop_front();
-
-				_UsedConnectorList.push_back(pConnector);
-			}
+		if (_freeList.empty() && !_releaseList.empty()) {
+			DoUpdate();
 		}
+		if (_freeList.empty()) {
+			AllocPool(_dwPoolSize);
+			Log(format("ConnectorMgr pool doubling {}", _dwPoolSize));
+		}
+
+		SafeLock lock(_lock);
+		CConnector* pConnector = _freeList.front();
+		_freeList.pop_front();
+
+		pConnector->SetIndex(MakeIndex());
+		_usedList.insert({ pConnector->GetIndex(), pConnector });
 
 		return pConnector;
 	}
 
 	void ReleaseConnector(CConnector *pConnector)
 	{
+		SafeLock lock(_lock);
+
+		_releaseList.emplace_back(pConnector);
+		if (_releaseList.size() > 10) {
+			DoUpdate();
+		}
+	}
+
+	void DoUpdate()
+	{
+		list<CConnector*> releaseList{};
 		{
-			SafeLock lock(_Lock);
+			SafeLock lock(_lock);
+			releaseList.swap(_releaseList);
+		}
 
-			//pConnector->SetDeactive();
+		{
+			SafeLock lock(_lock);
+			for (auto v : releaseList) {
+				v->Release();
 
-			if( std::find(_UsedConnectorList.begin(), _UsedConnectorList.end(), pConnector) != _UsedConnectorList.end() )
-			{
-				_UsedConnectorList.remove(pConnector);
-				_FreeConnectorList.push_back(pConnector);
+				if (auto it = _usedList.find(v->GetIndex()); it != _usedList.end()) {
+					_usedList.erase(it);
+					_freeList.emplace_back(v);
+				} else {
+					LogError(format("invalid connector object. uid: {}, index: {}", v->GetUID(), v->GetIndex()));
+				}
 			}
 		}
 	}
 
+
 	wstring GetStateReport()
 	{
-		wstring wstrState = {};
-
-		{
-			SafeLock lock(_Lock);
-			wstrState.append(FormatW(L"pool:%d, used:%d, free:%d", _ConnectorList.size(), _UsedConnectorList.size(), _FreeConnectorList.size()));
-		}
-
-		return wstrState;
+		SafeLock lock(_lock);
+		//wstring wstrState{ FormatW(L"pool:%d, used:%d, free:%d", _poolList.size(), _usedList.size(), _freeList.size()) };
+		//return wstrState;
+		return format(L"pool:{}, used:{}, free:{}", _poolList.size(), _usedList.size(), _freeList.size());
 	}
+
 };
 
 //

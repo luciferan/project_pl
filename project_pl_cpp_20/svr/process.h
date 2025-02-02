@@ -5,12 +5,16 @@
 //
 #include "../_framework/network.h"
 #include "../_framework/PacketDataQueue.h"
-#include "../_framework/ExceptionReport.h"
-#include "../_framework/util.h"
+#include "../_lib/ExceptionReport.h"
+#include "../_lib/util.h"
 
-#include "../_framework/Log.h"
+#include "../_lib/Log.h"
 //#include "./Config.h"
 
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <list>
 #include <set>
 
 //
@@ -20,12 +24,14 @@
 class App
 {
 public:
-	std::set<HANDLE> _threadHandleSet{};
+	//std::list<thread> _threads{};
+	std::list<jthread> _jthreads{};
 
-	DWORD _dwRunning = 0;
+	std::stop_source _threadStop;
+	atomic<int> _threadSuspended{ 1 };
 	INT64 _biUpdateTime = 0;
 
-	
+	//
 public:
 	App();
 	virtual ~App();
@@ -35,9 +41,9 @@ public:
 	void Run();
 	void Stop();
 	
-	static unsigned int WINAPI UpdateThread(void* p);
-	static unsigned int WINAPI ProcessThread(void* p);
-	static unsigned int WINAPI MonitorThread(void* p);
+	unsigned int UpdateThread(stop_token token);
+	unsigned int ProcessThread(stop_token token);
+	unsigned int MonitorThread(stop_token token);
 
 
 	bool SessionRelease(INT64 biCurrTime);

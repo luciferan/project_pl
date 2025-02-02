@@ -28,11 +28,11 @@ public:
 class SafeLock
 {
 private:
-	CRITICAL_SECTION& _lock;
+	Lock& _lock;
 
 public:
-	SafeLock(Lock& lock) : _lock(lock.Get())  { EnterCriticalSection(&_lock); }
-	~SafeLock() { LeaveCriticalSection(&_lock); }
+	SafeLock(Lock& lock) : _lock(lock)  { EnterCriticalSection(&_lock.Get()); }
+	~SafeLock() { LeaveCriticalSection(&_lock.Get()); }
 };
 #endif //__CRITICAL_SECTION_LOCK__
 

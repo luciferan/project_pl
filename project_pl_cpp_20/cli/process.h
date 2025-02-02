@@ -4,19 +4,39 @@
 
 //
 #include "../_framework/network.h"
-#include "../_framework/ExceptionReport.h"
-#include "../_framework/util.h"
-#include "../_framework/log.h"
+#include "../_lib/ExceptionReport.h"
+#include "../_lib/util.h"
 
+#include <thread>
+#include <atomic>
+#include <list>
 
 //
 //bool LoadConfig();
 
-unsigned int WINAPI UpdateThread(void *p);
-unsigned int WINAPI ProcessThread(void *p);
-unsigned int WINAPI CommandThread(void *p);
+class App {
+private:
+	atomic<int> _threadSuspended{ 1 };
+	atomic<int> _threadWait{ 1 };
+	stop_source _threadStop;
+	
+	list<jthread> _threads;
 
 
+public:
+	App() {}
+	~App() {}
+
+	bool Init();
+	bool Start();
+	void Wait();
+	bool Stop();
+
+	int ProcessThread(stop_token token);
+	int UpdateThread(stop_token token);
+
+	int CommandThread(stop_token token);
+};
 
 //
 #endif //__PROCESS_H__

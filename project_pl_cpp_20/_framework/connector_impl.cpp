@@ -1,5 +1,5 @@
 #include "./connector.h"
-#include "./util.h"
+#include "../_lib/util.h"
 
 //
 int CConnector::DataParsing()
@@ -58,9 +58,9 @@ wstring CConnector::GetStateReport()
 	wstring wstrReport = {};
 
 	if( GetActive() )
-		wstrReport.append(FormatW(L"[%d] connected: %d,", GetUniqueIndex(), GetSocket()));
+		wstrReport.append(FormatW(L"[%d] connected: %d,", GetUID(), GetSocket()));
 	else
-		wstrReport.append(FormatW(L"[%d] disconnected: ", GetUniqueIndex()));
+		wstrReport.append(FormatW(L"[%d] disconnected: ", GetUID()));
 
 	wstrReport.append(FormatW(L"sq:%d,", _SendQueue.size()));
 	wstrReport.append(FormatW(L"rb:(%d/%d),", _RecvDataBuffer.GetDataSize(), _RecvDataBuffer.GetBufferSize()));

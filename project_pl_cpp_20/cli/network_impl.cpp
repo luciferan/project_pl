@@ -1,7 +1,7 @@
 #include "../_framework/network.h"
 #include "../_framework/Connector.h"
-#include "../_framework/Log.h"
-#include "../_framework/util.h"
+#include "../_lib/Log.h"
+#include "../_lib/util.h"
 
 //
 eResultCode Network::DoUpdate(INT64 biCurrTime)

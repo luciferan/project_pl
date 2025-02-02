@@ -3,22 +3,20 @@
 #include "../_framework/Connector.h"
 #include "../_framework/PacketDataQueue.h"
 #include "../_framework/Packet.h"
-#include "../_framework/log.h"
 #include "../_framework/Packet_Protocol.h"
+#include "../_lib/log.h"
 
 #include "UserSession.h"
 //#include "Config.h"
 
 #include <iostream>
 #include <format>
+#include <source_location>
+#include <thread>
+#include <mutex>
 
 WCHAR HOST_ADDRESS[1024 + 1] = L"127.0.0.1";
 WORD HOST_PORT = 20001;
-
-void WriteMiniNetLog(std::wstring wstr)
-{
-	g_Log.Write(wstr);
-}
 
 App::App()
 {
@@ -31,33 +29,15 @@ App::~App()
 bool App::Init()
 {
 	unsigned int uiThreadID = 0;
-
+	stop_token token = _threadStop.get_token();
 	{
-		HANDLE hThread = (HANDLE)_beginthreadex(NULL, 0, UpdateThread, this, CREATE_SUSPENDED, &uiThreadID);
-		if (NULL == hThread) {
-			WriteMiniNetLog(L"error: App::Init(): UpdateThread create fail");
-			return false;
-		}
-
-		_threadHandleSet.insert(hThread);
+		_jthreads.emplace_back(&App::UpdateThread, this, token);
 	}
 	{
-		HANDLE hThread = (HANDLE)_beginthreadex(NULL, 0, ProcessThread, NULL, CREATE_SUSPENDED, &uiThreadID);
-		if (NULL == hThread) {
-			WriteMiniNetLog(L"error: App::Init(): ProcessThread create fail");
-			return false;
-		}
-
-		_threadHandleSet.insert(hThread);
+		_jthreads.emplace_back(&App::ProcessThread, this, token);
 	}
 	{
-		HANDLE hThread = (HANDLE)_beginthreadex(NULL, 0, MonitorThread, NULL, CREATE_SUSPENDED, &uiThreadID);
-		if (NULL == hThread) {
-			WriteMiniNetLog(L"error: App::Init(): MonitorThread create fail");
-			return false;
-		}
-
-		_threadHandleSet.insert(hThread);
+		_jthreads.emplace_back(&App::MonitorThread, this, token);
 	}
 
 	return true;
@@ -65,39 +45,41 @@ bool App::Init()
 
 void App::Run()
 {
-	InterlockedExchange((LONG*)&_dwRunning, 1);
-
-	for (HANDLE hThread : _threadHandleSet) {
-		ResumeThread(hThread);
-	}
+	_threadSuspended = 0;
+	_threadSuspended.notify_all();
 }
 
 void App::Stop()
 {
-	InterlockedExchange((LONG*)&_dwRunning, 0);
+	Network::GetInstance().Stop();
 
-	for (HANDLE hThread : _threadHandleSet) {
-		WaitForSingleObject(hThread, INFINITE);
+	for (jthread &t : _jthreads) {
+		t.request_stop();
 	}
+
+	CRecvPacketQueue::GetInstance().ForceActivateQueueEvent();
+	CSendPacketQueue::GetInstance().ForceActivateQueueEvent();
 }
 
-unsigned int WINAPI App::ProcessThread(void *p)
+unsigned int App::ProcessThread(stop_token token)
 {
 	Network &net = Network::GetInstance();
 
 	WCHAR wcsHostIP[] = L"127.0.0.1";
-	WORD wHostPort = 20010;
+	WORD wHostPort = 60010;
 
 	net._config.doListen = true;
 	wcsncpy_s(net._config.listenInfo.wcsIP, eNetwork::MAX_LEN_IP4_STRING, wcsHostIP, lstrlenW(wcsHostIP));
 	net._config.listenInfo.wPort = wHostPort;
 
 	if (false == net.Initialize()) {
-		WriteMiniNetLog(L"error: App::ProcessThread: network initialize fail");
+		//WriteMiniNetLog(L"error: App::ProcessThread: network initialize fail");
+		Log(format("error: App::{}: network initialize fail", source_location::current().function_name()));
 		return 1;
 	}
 	if (false == net.Start()) {
-		WriteMiniNetLog(L"error: App::ProcessThread: network start fail");
+		//WriteMiniNetLog(L"error: App::ProcessThread: network start fail");
+		Log(format("error: App::{}: network start fail", source_location::current().function_name()));
 		return 1;
 	}
 
@@ -106,16 +88,18 @@ unsigned int WINAPI App::ProcessThread(void *p)
 	CUserSessionMgr &UserSessionMgr = CUserSessionMgr::GetInstance();
 
 	//
-	DWORD &dwRunning = net._dwRunning;
-
 	CConnector *pConnector = nullptr;
 	CUserSession *pUserSession = nullptr;
 	CPacketStruct *pPacket = nullptr;
 
 	DWORD dwPacketSize = 0;
 
+	_threadSuspended.wait(1);
+
 	//
-	while( 1 == InterlockedExchange(&dwRunning, dwRunning) )
+	//WriteMiniNetLog(L"log: MiniNet::ProcessThread() : start");
+	Log(format("log: {}: start", source_location::current().function_name()));
+	while( !token.stop_requested() )
 	{
 		pPacket = RecvPacketQueue.Pop();
 		if( !pPacket )
@@ -125,7 +109,7 @@ unsigned int WINAPI App::ProcessThread(void *p)
 		sPacketTail *pTail = (sPacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(sPacketTail));
 		if( pTail->dwCheckTail != PACKET_CHECK_TAIL_KEY )
 		{
-			WriteMiniNetLog(L"Invliad packet");
+			Log("Invliad packet");
 			net.Disconnect(pConnector);
 		}
 
@@ -147,7 +131,7 @@ unsigned int WINAPI App::ProcessThread(void *p)
 				pUserSession = UserSessionMgr.GetFreeUserSession();
 				if( !pUserSession )
 				{
-					WriteMiniNetLog(L"CUserSessionMgr::GetFreeUserSession() fail");
+					Log("CUserSessionMgr::GetFreeUserSession() fail");
 				}
 				else
 				{
@@ -157,7 +141,7 @@ unsigned int WINAPI App::ProcessThread(void *p)
 			}
 			else
 			{
-				WriteMiniNetLog(L"Invliad packet");
+				Log("Invliad packet");
 				net.Disconnect(pConnector);
 			}
 		}
@@ -173,35 +157,39 @@ unsigned int WINAPI App::ProcessThread(void *p)
 
 	net.Stop();
 
-	//
+	//WriteMiniNetLog(L"log: MiniNet::ProcessThread() : end");
+	Log(format("log: {}: end", source_location::current().function_name()));
 	return 0;
 };
 
 //
-unsigned int WINAPI App::UpdateThread(void *p)
+unsigned int App::UpdateThread(stop_token token)
 {
 	Network &Net = Network::GetInstance();
 	//CUserSessionMgr &UserSessionMgr = CUserSessionMgr::GetInstance();
 
-	App *app = (App*)p;
-
 	//
-	DWORD &dwRunning = Net._dwRunning;
 	INT64 biCurrTime = 0;
 
 	CUserSession *pUserSession = nullptr;
 	//std::list<CUserSession*> ReleaseSessionList = {};
 
-	while( 1 == InterlockedExchange(&dwRunning, dwRunning) )
+	_threadSuspended.wait(1);
+
+	//WriteMiniNetLog(L"log: MiniNet::UpdateThread() : start");
+	Log(format("log: {}: start", source_location::current().function_name()));
+	while( !token.stop_requested() )
 	{
 		biCurrTime = GetTimeMilliSec();
 
 		//
-		app->SessionRelease(biCurrTime);
+		SessionRelease(biCurrTime);
 
 		//
 		Sleep(1);
 	}
+	//WriteMiniNetLog(L"log: MiniNet::UpdateThread() : end");
+	Log(format("log: {}: end", source_location::current().function_name()));
 
 	//
 	return 0;
@@ -246,43 +234,48 @@ bool App::SessionRelease(INT64 biCurrTime)
 	return true;
 }
 
-unsigned int WINAPI App::MonitorThread(void *p)
+unsigned int App::MonitorThread(stop_token token)
 {
 	Network &Net = Network::GetInstance();
 	CUserSessionMgr &UserSessionMgr = CUserSessionMgr::GetInstance();
 
 	//
-	DWORD &dwRunning = Net._dwRunning;
 	INT64 biCurrTime = 0;
 	INT64 biCheckTimer = GetTimeMilliSec() + (MILLISEC_A_SEC * 15);
 
+	_threadSuspended.wait(1);
+
 	//
-	while( 1 == InterlockedExchange(&dwRunning, dwRunning) )
+	//WriteMiniNetLog(L"log: MiniNet::MonitorThread() : start");
+	Log(format("log: {}: start", source_location::current().function_name()));
+	while( !token.stop_requested() )
 	{
-		biCurrTime = GetTimeMilliSec();
+		//biCurrTime = GetTimeMilliSec();
+
+		////
+		//if( biCheckTimer < biCurrTime )
+		//{
+		//	CConnector *pConnector = Net.Connect(HOST_ADDRESS, HOST_PORT);
+		//	if( !pConnector )
+		//	{
+		//		WriteMiniNetLog(L"error: MonitorThread: Connect fail");
+		//	}
+		//	else
+		//	{
+		//		g_Log.Write(L"log: MonitorThread: <%d> Connected. Socket %d", pConnector->GetIndex(), pConnector->GetSocket());
+		//		//WriteMiniNetLog(format(L"log: MonitorThread: <{}> Connected. Socket {}", pConnector->GetIndex(), pConnector->GetSocket()));
+		//		Net.Disconnect(pConnector);
+		//	}
+
+		//	biCheckTimer = GetTimeMilliSec() + (MILLISEC_A_SEC * 15);
+		//}
 
 		//
-		if( biCheckTimer < biCurrTime )
-		{
-			CConnector *pConnector = Net.Connect(HOST_ADDRESS, HOST_PORT);
-			if( !pConnector )
-			{
-				WriteMiniNetLog(L"error: MonitorThread: Connect fail");
-			}
-			else
-			{
-				g_Log.Write(L"log: MonitorThread: <%d> Connected. Socket %d", pConnector->GetIndex(), pConnector->GetSocket());
-				//WriteMiniNetLog(format(L"log: MonitorThread: <{}> Connected. Socket {}", pConnector->GetIndex(), pConnector->GetSocket()));
-				Net.Disconnect(pConnector);
-			}
-
-			biCheckTimer = GetTimeMilliSec() + (MILLISEC_A_SEC * 15);
-		}
-
-		//
-		Sleep(1);
+		//Sleep(1);
+		this_thread::sleep_for(1ms);
 	}
 
-	//
+	//WriteMiniNetLog(L"log: MiniNet::MonitorThread() : start");
+	Log(format("log: {}: end", source_location::current().function_name()));
 	return 0;
 }
