@@ -1,4 +1,4 @@
-#include "../_framework/Connector.h"
+﻿#include "../_framework/Connector.h"
 #include "../_framework/Packet.h"
 #include "../_framework/Packet_Protocol.h"
 #include "../_lib/util.h"

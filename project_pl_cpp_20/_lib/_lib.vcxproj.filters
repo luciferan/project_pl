@@ -18,7 +18,7 @@
     <ClCompile Include="util_time.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="util_String.cpp">
+    <ClCompile Include="util_string.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="_json.cpp">
@@ -44,7 +44,7 @@
     <ClInclude Include="util_time.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="util_String.h">
+    <ClInclude Include="util_string.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="_json.h">

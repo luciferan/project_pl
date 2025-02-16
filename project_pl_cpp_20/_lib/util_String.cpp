@@ -1,30 +1,35 @@
 #include "util_String.h"
+#include <memory>
 
 //
 string FormatA(const char *pFormat, ...)
 {
-	char szBuffer[eString::BUFFER_MAX + 1];
-	memset(szBuffer, 0, sizeof(szBuffer));
+	char* pszBuffer = new char[eString::BUFFER_MAX + 1];
+	memset(pszBuffer, 0, sizeof(pszBuffer));
 
 	va_list args;
 	va_start(args, pFormat);
-	_vsnprintf_s(szBuffer, eString::BUFFER_MAX, eString::BUFFER_MAX, pFormat, args);
+	_vsnprintf_s(pszBuffer, eString::BUFFER_MAX, eString::BUFFER_MAX, pFormat, args);
 	va_end(args);
 
-	return std::string(szBuffer);
+	std::string str(pszBuffer);
+	delete[] pszBuffer;
+	return str;
 }
 
 wstring FormatW(const WCHAR *pFormat, ...)
 {
-	WCHAR wcsBuffer[eString::BUFFER_MAX + 1];
-	memset(wcsBuffer, 0, sizeof(wcsBuffer));
+	WCHAR* pwcsBuffer = new WCHAR[eString::BUFFER_MAX + 1];
+	memset(pwcsBuffer, 0, sizeof(pwcsBuffer));
 
 	va_list args;
 	va_start(args, pFormat);
-	_vsnwprintf_s(wcsBuffer, eString::BUFFER_MAX, eString::BUFFER_MAX, pFormat, args);
+	_vsnwprintf_s(pwcsBuffer, eString::BUFFER_MAX, eString::BUFFER_MAX, pFormat, args);
 	va_end(args);
 
-	return std::wstring(wcsBuffer);
+	std::wstring wstr(pwcsBuffer);
+	delete[] pwcsBuffer;
+	return wstr;
 }
 
 void TokenizeA(string &str, vector<string> &tokens, string delimiter)

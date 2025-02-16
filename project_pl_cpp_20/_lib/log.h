@@ -17,11 +17,6 @@ using namespace std;
 
 const int MAX_LEN_LOG_STRING = 8192;
 
-enum class eLog
-{
-	
-};
-
 enum class eLogDivideType
 {
 	Day,
@@ -39,7 +34,6 @@ private:
 	Lock _FileLock;
 	FILE *_pFile = nullptr;
 
-
 	//
 private:
 	void ConsoleWrite(const WCHAR *pwcsLogText);
@@ -51,9 +45,9 @@ public:
 
 	bool Set(wstring wstrFileName);
 
-	void Write(std::wstring wstr);
-	void Write(const WCHAR *pwcsFormat, ...);
 	void Write(const std::string& str);
+	void Write(const std::wstring& wstr);
+	void Write(const WCHAR *pwcsFormat, ...);
 };
 
 //
@@ -66,6 +60,7 @@ extern void LogError(const std::string& str, std::source_location loc = std::sou
 extern void LogDebug(const std::string& str, std::source_location loc = std::source_location::current());
 //extern void WriteMiniNetLog(std::wstring wstr);
 extern void PacketLog(const std::wstring& str, const char* pPacketData, int nPacketDataSize);
+extern void PerformanceLog(const std::string& str);
 
 //
 #endif //__LOG_H__

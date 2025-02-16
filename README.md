@@ -4,16 +4,25 @@
 
 
 history
+# todo
+- std::thread로 통일
+- 로그코드 변경. 로그 남기는 위치도 변경. 소스파일 위치에 남고 있었네
+- 동기화 mutex로 변경
+
+#20250216
+- FormatA, FormatW 버퍼를 힙으로 이동
+- GetFileList를 <filesystem> 으로 변경
+- PacketLog snwprintf에서 std::format으로 수정 적용
+- 오류때문에 주석처리해놓은 Log 되살림
+- CTimeSet _get_timezone 적용으로 변경
+- CPerformanceChecker를 chrono::steady_clock으로 변경
+
 #20250202
 - 시간이 없어서 작업에 텀이 길어진 이유로 중간커밋
 - 자주 수정안하는 소스를 /_lib 폴더로 이동
 - 메모리풀에 객체를 쓰고싶은데 락객체 복사문제가 해결되지 않아서 포인터로
 - std::jthread의 종료 시점이 제어가 안되서 std::thread에 stop_token을 추가해서 사용
 - _snprintf_s를 다 빼고 std::format를 쓰고싶었으나 바이너리와 포인터 포메팅관련 문제가 조금 있어서 _snprintf_s를 계속 써야할듯
-# todo
-- std::thread로 통일
-- 로그코드 변경. 로그 남기는 위치도 변경. 소스파일 위치에 남고 있었네
-- 동기화 mutex로 변경
 
 #20250114
 - std::jthread를 사용하는것이 그다지 효용성이 높아 보이지 않음

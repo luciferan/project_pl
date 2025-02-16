@@ -97,7 +97,7 @@ public:
 
 	bool Disconnect(CConnector *pSession);
 	bool Disconnect(SOCKET socket);
-	
+
 	eResultCode Write(CConnector *pSession, char *pSendData, int iSendDataSize);
 	eResultCode InnerWrite(CConnector *pSession, char *pSendData, int nSendDataSize);
 };

@@ -13,7 +13,7 @@
 using namespace std;
 
 //
-int GetFileList(wstring wstrDirectoryPath, vector<wstring> &vecFileList);
+int GetFileList(wstring wstrDirectoryPath, list<wstring> &fileList);
 
 int MakeMD5(wstring wstrFilePath, wstring &wstrChecksum);
 bool CheckMD5(wstring wstrFilePath, wstring wstrChecksum);

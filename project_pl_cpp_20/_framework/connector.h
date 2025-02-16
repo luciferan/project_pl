@@ -15,7 +15,7 @@
 #include "../_lib/log.h"
 
 #include "../_lib/safeLock.h"
-#include "../_lib/util_String.h"
+#include "../_lib/util_string.h"
 
 #include "./_common_variable.h"
 

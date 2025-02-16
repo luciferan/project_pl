@@ -28,36 +28,30 @@ void LogDebug(const std::string& str, std::source_location loc /*= std::source_l
 
 void PacketLog(const std::wstring& str, const char* pPacketData, int nPacketDataSize)
 {
-	return;
-
-	//WCHAR wcsLogBuffer[MAX_PACKET_BUFFER_SIZE + 1024 + 1] = { 0, };
 	std::wstring strBuffer{};
-
-	int nLen = 0;
-	//nLen += _snwprintf_s(wcsLogBuffer + nLen, MAX_PACKET_BUFFER_SIZE, MAX_PACKET_BUFFER_SIZE - nLen, L"%s", str.c_str());
 	strBuffer.append(str);
 
 	if (1024 < nPacketDataSize)
 	{
-		//for (int idx = 0; idx < 6; ++idx)
-		//	nLen += _snwprintf_s(wcsLogBuffer + nLen, MAX_PACKET_BUFFER_SIZE, MAX_PACKET_BUFFER_SIZE - nLen, L"%02X", pPacketData[idx]);
-		//nLen += _snwprintf_s(wcsLogBuffer + nLen, MAX_PACKET_BUFFER_SIZE, MAX_PACKET_BUFFER_SIZE - nLen, L". connot write packetlog. too long.");
 		for (int idx = 0; idx < 6; ++idx) {
-			//strBuffer.append(format(L"{0:x}", (int)(pPacketData[idx])));
+			strBuffer.append(format(L"{0:02X}", pPacketData[idx]));
 		}
-		//strBuffer.append(L". connot write packetlog. too long.");
+		strBuffer.append(L". connot write packetlog. too long.");
 			
 	} else
 	{
-		//for (int idx = 0; idx < nPacketDataSize; ++idx)
-		//	nLen += _snwprintf_s(wcsLogBuffer + nLen, MAX_PACKET_BUFFER_SIZE, MAX_PACKET_BUFFER_SIZE - nLen, L"%02X", pPacketData[idx]);
-		//nLen += _snwprintf_s(wcsLogBuffer + nLen, MAX_PACKET_BUFFER_SIZE, MAX_PACKET_BUFFER_SIZE - nLen, L"\0");
 		for (int idx = 0; idx < nPacketDataSize; ++idx) {
-			//strBuffer.append(format(L"{:x}", (int)(pPacketData[idx])));
+			strBuffer.append(format(L"{0:02X}", pPacketData[idx]));
 		}
+		strBuffer.append(L"\0");
 	}
 
 	Log(strBuffer);
+}
+
+void PerformanceLog(const string &str)
+{
+	g_PerformanceLog.Write(format("perfornamce: {}", str));
 }
 
 //
@@ -84,7 +78,7 @@ bool CLog::Set(wstring wstrFileName)
 	return true;
 }
 
-void CLog::Write(std::wstring wstr)
+void CLog::Write(const std::wstring& wstr)
 {
 	CTimeSet CurrTime;
 	//wprintf(L"%d:%d:%d %s\n", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), wstr.c_str());
@@ -98,17 +92,19 @@ void CLog::Write(std::wstring wstr)
 
 void CLog::Write(const WCHAR *pFormat, ...)
 {
-	WCHAR buffer[MAX_LEN_LOG_STRING + 1] = { 0, };
+	//WCHAR buffer[MAX_LEN_LOG_STRING + 1] = { 0, };
+	WCHAR* pwcsBuffer = new WCHAR[MAX_LEN_LOG_STRING + 1];
+	memset(pwcsBuffer, 0, sizeof(pwcsBuffer));
 
 	va_list args;
 	va_start(args, pFormat);
-	_vsnwprintf_s(buffer, _countof(buffer), _countof(buffer), pFormat, args);
+	_vsnwprintf_s(pwcsBuffer, MAX_LEN_LOG_STRING, MAX_LEN_LOG_STRING, pFormat, args);
 	va_end(args);
 
 	//
 	CTimeSet CurrTime;
 	//wprintf(L"%d:%d:%d %s\n", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), buffer);
-	wstring wstrLogText = FormatW(L"%02d:%02d:%02d %s", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), buffer);
+	wstring wstrLogText = FormatW(L"%02d:%02d:%02d %s", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), pwcsBuffer);
 	FileWrite(wstrLogText.c_str());
 	wprintf(L"%s\n", wstrLogText.c_str());
 

@@ -1,35 +1,22 @@
 #include "./util_FileManagement.h"
 #include "../_external/md5.h"
 
+#include <filesystem>
+
 //
-int GetFileList(wstring wstrPath, vector<wstring> &vecFileList)
+int GetFileList(string strDirectoryPath, list<string>& fileList)
 {
-	HANDLE hFileSearch = INVALID_HANDLE_VALUE;
-	WIN32_FIND_DATAW wfd;
-
-	std::transform(wstrPath.begin(), wstrPath.end(), wstrPath.begin(), towlower);
-	vecFileList.clear();
-
-	//
-	hFileSearch = FindFirstFileW(wstrPath.c_str(), &wfd);
-	if( INVALID_HANDLE_VALUE != hFileSearch )
-	{
-		do 
-		{
-			if( FILE_ATTRIBUTE_DIRECTORY & wfd.dwFileAttributes )
-			{
-			}
-			if( FILE_ATTRIBUTE_ARCHIVE & wfd.dwFileAttributes )
-			{
-				vecFileList.push_back(wfd.cFileName);
-			}
-		} while ( TRUE == FindNextFileW(hFileSearch, &wfd) );
-		
-		FindClose(hFileSearch);
+	try {
+		for (const auto& entry : filesystem::directory_iterator(strDirectoryPath)) {
+			fileList.emplace_back(entry.path().string());
+		}
+	}
+	catch (const filesystem::filesystem_error& e) {
+		fileList.emplace_back(e.what());
+		return -1;
 	}
 
-	//
-	return (int)vecFileList.size();
+	return (int)fileList.size();
 }
 
 int MakeMD5(wstring wstrFilePath, wstring &wstrChecksum)
@@ -63,8 +50,7 @@ int MakeMD5(wstring wstrFilePath, wstring &wstrChecksum)
 
 	//
 	wstrChecksum.resize(16 * 2);
-	for( auto idx = 0; idx < 16; ++idx )
-	{
+	for( auto idx = 0; idx < 16; ++idx ) {
 		swprintf_s(&wstrChecksum[idx * 2], 2, L"%02x", cDigest[idx]);
 	}
 

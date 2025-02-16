@@ -143,7 +143,7 @@
     <ClCompile Include="safeLock.cpp" />
     <ClCompile Include="util_common.cpp" />
     <ClCompile Include="util_FileManagement.cpp" />
-    <ClCompile Include="util_String.cpp" />
+    <ClCompile Include="util_string.cpp" />
     <ClCompile Include="util_time.cpp" />
     <ClCompile Include="_json.cpp" />
   </ItemGroup>
@@ -154,7 +154,7 @@
     <ClInclude Include="util.h" />
     <ClInclude Include="util_common.h" />
     <ClInclude Include="util_FileManagement.h" />
-    <ClInclude Include="util_String.h" />
+    <ClInclude Include="util_string.h" />
     <ClInclude Include="util_time.h" />
     <ClInclude Include="_json.h" />
   </ItemGroup>
