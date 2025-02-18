@@ -72,12 +72,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>../bin64/</OutDir>
-    <IntDir>../bin64/$(ProjectName)/$(Configuration)/</IntDir>
+    <OutDir>../bin64d/</OutDir>
+    <IntDir>../bin64d/$(ProjectName)/$(Configuration)/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>../bin64/</OutDir>
-    <IntDir>../bin64/$(ProjectName)/$(Configuration)/</IntDir>
+    <OutDir>../bin64r/</OutDir>
+    <IntDir>../bin64r/$(ProjectName)/$(Configuration)/</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -140,6 +140,7 @@
   <ItemGroup>
     <ClCompile Include="exceptionReport.cpp" />
     <ClCompile Include="log.cpp" />
+    <ClCompile Include="MySQL.cpp" />
     <ClCompile Include="safeLock.cpp" />
     <ClCompile Include="util_common.cpp" />
     <ClCompile Include="util_FileManagement.cpp" />
@@ -150,6 +151,7 @@
   <ItemGroup>
     <ClInclude Include="exceptionReport.h" />
     <ClInclude Include="log.h" />
+    <ClInclude Include="MySQL.h" />
     <ClInclude Include="safeLock.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="util_common.h" />

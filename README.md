@@ -9,6 +9,11 @@ history
 - 로그코드 변경. 로그 남기는 위치도 변경. 소스파일 위치에 남고 있었네
 - 동기화 mutex로 변경
 
+#20250218
+- MySQL 연결테스트중
+- MySQL-connector를 사용하는 부분, MySQL C API를 사용하는 부분 둘다 확인
+- MySQL 라이브러리가 추가되서 용량이 커짐
+
 #20250216
 - FormatA, FormatW 버퍼를 힙으로 이동
 - GetFileList를 <filesystem> 으로 변경
