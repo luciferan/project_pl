@@ -9,6 +9,12 @@ history
 - 로그코드 변경. 로그 남기는 위치도 변경. 소스파일 위치에 남고 있었네
 - 동기화 mutex로 변경
 
+#20250223
+- MySQL db 연결 클래스 추가
+- connector-c++를 사용하는 클래스 추가
+- connector-c++가 꽤 좋아서 c api를 사용하는 클래스는 작업 중단
+- 나중에 필요한 상황이되면 다시 제작하거나 code_rubble쪽에 추가하는것으로
+
 #20250218
 - MySQL 연결테스트중
 - MySQL-connector를 사용하는 부분, MySQL C API를 사용하는 부분 둘다 확인
