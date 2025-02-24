@@ -13,9 +13,9 @@
 using namespace std;
 
 //
-int GetFileList(wstring wstrDirectoryPath, list<wstring> &fileList);
+int GetFileList(wstring wstrDirectoryPath, list<wstring>& fileList);
 
-int MakeMD5(wstring wstrFilePath, wstring &wstrChecksum);
+int MakeMD5(wstring wstrFilePath, wstring& wstrChecksum);
 bool CheckMD5(wstring wstrFilePath, wstring wstrChecksum);
 
 //

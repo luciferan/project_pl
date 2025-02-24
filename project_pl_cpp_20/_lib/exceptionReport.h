@@ -12,25 +12,25 @@
 class CExceptionReport
 {
 private:
-	HMODULE _hDebugHelp;
+    HMODULE _hDebugHelp;
 
-	//
+    //
 private:
-	CExceptionReport();
-	virtual ~CExceptionReport();
+    CExceptionReport();
+    virtual ~CExceptionReport();
 
 public:
-	static CExceptionReport& GetInstance()
-	{
-		static CExceptionReport *pInstance = new CExceptionReport();
-		return *pInstance;
-	}
+    static CExceptionReport& GetInstance()
+    {
+        static CExceptionReport* pInstance = new CExceptionReport();
+        return *pInstance;
+    }
 
-	//DWORD ExceptionHandlerBegin(MINIDUMP_TYPE dumpType);
-	DWORD ExceptionHandlerBegin();
+    //DWORD ExceptionHandlerBegin(MINIDUMP_TYPE dumpType);
+    DWORD ExceptionHandlerBegin();
 
-	static LONG WINAPI makeFullDump(LPEXCEPTION_POINTERS lpExceptionPointer);
-	static LONG WINAPI makeDump(LPEXCEPTION_POINTERS lpExceptionPointer, MINIDUMP_TYPE dumpType);
+    static LONG WINAPI makeFullDump(LPEXCEPTION_POINTERS lpExceptionPointer);
+    static LONG WINAPI makeDump(LPEXCEPTION_POINTERS lpExceptionPointer, MINIDUMP_TYPE dumpType);
 };
 
 //

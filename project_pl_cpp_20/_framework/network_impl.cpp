@@ -8,17 +8,16 @@
 //
 eResultCode Network::DoUpdate(INT64 biCurrTime)
 {
-	if( _biUpdateTime < biCurrTime )
-	{
-		_biUpdateTime = GetTimeMilliSec() + (MILLISEC_A_MIN);
-		
-		//
-		wstring wstrReport = {};
-		wstrReport.append(L"ConnectorState: ");
-		wstrReport.append(CConnectorMgr::GetInstance().GetStateReport());
+    if (_biUpdateTime < biCurrTime) {
+        _biUpdateTime = GetTimeMilliSec() + (MILLISEC_A_MIN);
 
-		g_PerformanceLog.Write(wstrReport.c_str());
-	}
+        //
+        wstring wstrReport = {};
+        wstrReport.append(L"ConnectorState: ");
+        wstrReport.append(CConnectorMgr::GetInstance().GetStateReport());
 
-	return RESULT_SUCC;
+        g_PerformanceLog.Write(wstrReport.c_str());
+    }
+
+    return RESULT_SUCC;
 }

@@ -8,65 +8,58 @@
 //
 int CUserSession::Clear()
 {
-	//InterlockedExchange(&_dwUsed, 0);
-	//InterlockedExchange(&_dwActive, 0);
-	_biHeartBeat = 0;
-	_biUpdateTime = 0;
+    _biHeartBeat = 0;
+    _biUpdateTime = 0;
 
-	if( _pConnector )
-		_pConnector->SetParam(nullptr);
+    if (_pConnector) {
+        _pConnector->SetParam(nullptr);
+    }
 
-	return 0;
+    return 0;
 }
 
 int CUserSession::Release()
 {
-	// todo: 객체 정리 작업
-	Clear();
-
-	//InterlockedExchange(&_dwActive, 0);
-
-	return 0;
+    Clear();
+    return 0;
 }
 
-int CUserSession::MessageProcess(char *pData, int nLen)
+int CUserSession::MessageProcess(char* pData, int nLen)
 {
-	if( sizeof(sPacketHead) > nLen )
-		return -1;
+    if (sizeof(sPacketHead) > nLen) {
+        return -1;
+    }
 
-	//
-	sPacketHead *pHeader = (sPacketHead*)pData;
-	DWORD dwPackethLength = pHeader->dwLength - sizeof(sPacketHead) - sizeof(sPacketTail);
-	DWORD dwProtocol = pHeader->dwProtocol;
+    //
+    sPacketHead* pHeader = (sPacketHead*)pData;
+    DWORD dwPackethLength = pHeader->dwLength - sizeof(sPacketHead) - sizeof(sPacketTail);
+    DWORD dwProtocol = pHeader->dwProtocol;
 
-	char *pPacketData = (char*)(pHeader + 1);
+    char* pPacketData = (char*)(pHeader + 1);
 
-	//
-	switch( dwProtocol )
-	{
-	case P_ECHO:
-		{
-			Log(format("MessageProcess {}: {}", GetIndex(), dwProtocol));
-			SendPacketData(dwProtocol, pPacketData, dwPackethLength);
-		}
-		break;
-	default:
-		break;
-	}
+    //
+    switch (dwProtocol) {
+        case P_ECHO:
+        {
+            Log(format("MessageProcess {}: {}", GetIndex(), dwProtocol));
+            SendPacketData(dwProtocol, pPacketData, dwPackethLength);
+        }
+        break;
+        default:
+            break;
+    }
 
-	//
-	return 0;
+    //
+    return 0;
 }
 
 int CUserSession::DoUpdate(INT64 uiCurrTime)
 {
-	if( _biHeartBeat < uiCurrTime )
-	{
-		_biHeartBeat = uiCurrTime + (MILLISEC_A_SEC * 30);
-	}
+    if (_biHeartBeat < uiCurrTime) {
+        _biHeartBeat = uiCurrTime + (MILLISEC_A_SEC * 30);
+    }
 
-	//
-	return 0;
+    return 0;
 }
 
 //int CUserSession::SendPacket(DWORD dwProtocol, char *pPacket, DWORD dwPacketLength)
@@ -89,15 +82,14 @@ int CUserSession::DoUpdate(INT64 uiCurrTime)
 //	return 0;
 //}
 
-
-eResultCode CUserSession::SendPacketData(DWORD dwProtocol, char *pData, DWORD dwSendDataSize)
+eResultCode CUserSession::SendPacketData(DWORD dwProtocol, char* pData, DWORD dwSendDataSize)
 {
-	Log("info: SendPacketData");
+    Log("info: SendPacketData");
 
-	//CNetworkBuffer SendBuffer;
-	char SendBuffer[MAX_PACKET_BUFFER_SIZE] = {};
-	DWORD dwSendBufferSize = sizeof(SendBuffer);
-	MakeNetworkPacket(dwProtocol, pData, dwSendDataSize, (char*)&SendBuffer, dwSendBufferSize);
+    //CNetworkBuffer SendBuffer;
+    char SendBuffer[MAX_PACKET_BUFFER_SIZE]{};
+    DWORD dwSendBufferSize{sizeof(SendBuffer)};
+    MakeNetworkPacket(dwProtocol, pData, dwSendDataSize, (char*)&SendBuffer, dwSendBufferSize);
 
-	return _pConnector->AddSendData((char*)&SendBuffer, dwSendBufferSize);
+    return _pConnector->AddSendData((char*)&SendBuffer, dwSendBufferSize);
 }

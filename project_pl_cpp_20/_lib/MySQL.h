@@ -64,13 +64,14 @@ public:
         _commit = commit;
     }
 
-    sql::Statement* GetStatement() 
-    { 
-        _statement = _conn->createStatement(); 
-        return _statement; 
+    sql::Statement* GetStatement()
+    {
+        _statement = _conn->createStatement();
+        return _statement;
     }
 
-    sql::PreparedStatement* GetStatement(string query) {
+    sql::PreparedStatement* GetStatement(string query)
+    {
         _preparedStatement = _conn->prepareStatement(query);
         return _preparedStatement;
     }

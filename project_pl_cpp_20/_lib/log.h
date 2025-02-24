@@ -19,35 +19,35 @@ const int MAX_LEN_LOG_STRING = 8192;
 
 enum class eLogDivideType
 {
-	Day,
-	Hour,
-	Min,
+    Day,
+    Hour,
+    Min,
 };
 
 //
 class CLog
 {
 private:
-	wstring _wstrFileName = {};
-	eLogDivideType _eDivideType = eLogDivideType::Day;
+    wstring _wstrFileName{};
+    eLogDivideType _eDivideType{eLogDivideType::Day};
 
-	Lock _FileLock;
-	FILE *_pFile = nullptr;
+    Lock _FileLock;
+    FILE* _pFile{nullptr};
 
-	//
+    //
 private:
-	void ConsoleWrite(const WCHAR *pwcsLogText);
-	void FileWrite(const WCHAR *pwcsLogText);
+    void ConsoleWrite(const WCHAR* pwcsLogText);
+    void FileWrite(const WCHAR* pwcsLogText);
 
 public:
-	CLog();
-	virtual ~CLog();
+    CLog();
+    virtual ~CLog();
 
-	bool Set(wstring wstrFileName);
+    bool Set(wstring wstrFileName);
 
-	void Write(const std::string& str);
-	void Write(const std::wstring& wstr);
-	void Write(const WCHAR *pwcsFormat, ...);
+    void Write(const std::string& str);
+    void Write(const std::wstring& wstr);
+    void Write(const WCHAR* pwcsFormat, ...);
 };
 
 //

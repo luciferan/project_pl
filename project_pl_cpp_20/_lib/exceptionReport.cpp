@@ -1,65 +1,57 @@
 #include "ExceptionReport.h"
 #include "util.h"
 
-#include <wchar.h>
+#include <string>
+#include <source_location>
+
+using namespace std;
 
 CExceptionReport::CExceptionReport()
 {
-	_hDebugHelp = LoadLibraryW(L"dbghelp.dll");
+    _hDebugHelp = LoadLibraryW(L"dbghelp.dll");
 }
 
 CExceptionReport::~CExceptionReport()
 {
 }
 
-//DWORD CExceptionReport::ExceptionHandlerBegin(MINIDUMP_TYPE dumpType)
 DWORD CExceptionReport::ExceptionHandlerBegin()
 {
-	SetUnhandledExceptionFilter(makeFullDump);
-	return 0;
+    SetUnhandledExceptionFilter(makeFullDump);
+    return 0;
 }
 
 LONG WINAPI CExceptionReport::makeFullDump(LPEXCEPTION_POINTERS lpExceptionPointer)
 {
-	return makeDump(lpExceptionPointer, MiniDumpWithFullMemory);
+    //return makeDump(lpExceptionPointer, MiniDumpWithFullMemory);
+    return makeDump(lpExceptionPointer, MiniDumpNormal);
 }
 
 LONG WINAPI CExceptionReport::makeDump(LPEXCEPTION_POINTERS lpExceptionPointer, MINIDUMP_TYPE dumpType)
 {
-	//WCHAR wcsProgramName[1024 + 1] = {0,};
-	//WCHAR wcsDrive[8+1] = {0,}, wcsDir[256+1] = {0,}, wcsFileExt[16+1] = {0,};
-	WCHAR wcsFileName[256+1] = {0,};
-	CTimeSet currTime;
+    CTimeSet currTime;
 
-	//GetModuleFileName(NULL, wcsProgramName, _countof(wcsProgramName));
-	//_wsplitpath_s(wcsProgramName, wcsDrive, wcsDir, wcsFileName, wcsFileExt);
-	wstring wstrFileName = GetFileName();
+    wstring fileName = GetFileName();
+    wstring dumpFileName{format(L"{}_{:04d}-{:02d}-{:02d}_{:02d}-{:02d}-{:02d}.dmp",  fileName.c_str(), currTime.GetYear(), currTime.GetMonth(), currTime.GetDay(), currTime.GetHour(), currTime.GetMin(), currTime.GetSec())};
 
-	//swprintf(wcsFileName, L"%s_dmp_%04d-%02d-%02d_%02d-%02d-%02d.dmp", wstrFileName.c_str(), currTime.GetYear(), currTime.GetMonth(), currTime.GetDay(), currTime.GetHour(), currTime.GetMin(), currTime.GetSec());
-	swprintf_s(wcsFileName, 256, L"%s_dmp_%04d-%02d-%02d_%02d-%02d-%02d.dmp", wstrFileName.c_str(), currTime.GetYear(), currTime.GetMonth(), currTime.GetDay(), currTime.GetHour(), currTime.GetMin(), currTime.GetSec());
+    //
+    HANDLE hFile = CreateFile(dumpFileName.c_str(), GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (INVALID_HANDLE_VALUE != hFile) {
+        MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
+        exceptionInfo.ThreadId = GetCurrentThreadId();
+        exceptionInfo.ExceptionPointers = lpExceptionPointer;
+        exceptionInfo.ClientPointers = NULL;
 
-	//
-	HANDLE hFile = CreateFile(wcsFileName, GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if( INVALID_HANDLE_VALUE != hFile )
-	{
-		MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
-		exceptionInfo.ThreadId = GetCurrentThreadId();
-		exceptionInfo.ExceptionPointers = lpExceptionPointer;
-		exceptionInfo.ClientPointers = NULL;
+        auto bRet = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, dumpType, &exceptionInfo, NULL, NULL);
+        if (!bRet) {
+            auto err = GetLastError();
+        }
 
-		auto bRet = MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, dumpType, &exceptionInfo, NULL, NULL);
-		if( !bRet )
-		{
-			auto err = GetLastError();
-		}
+        CloseHandle(hFile);
+    } else {
+        auto err = GetLastError();
+    }
 
-		CloseHandle(hFile);
-	}
-	else
-	{
-		auto err = GetLastError();
-	}
-
-	//
-	return EXCEPTION_EXECUTE_HANDLER;
+    //
+    return EXCEPTION_EXECUTE_HANDLER;
 }

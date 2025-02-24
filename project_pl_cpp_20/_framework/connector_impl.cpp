@@ -4,13 +4,14 @@
 //
 int CConnector::DataParsing()
 {
-	int nPacketLength = 0;
-	_RecvDataBuffer.Read((char*)&nPacketLength, sizeof(int));
+    int nPacketLength = 0;
+    _RecvDataBuffer.Read((char*)&nPacketLength, sizeof(int));
 
-	if( (int)_RecvDataBuffer.GetDataSize() < nPacketLength)
-		return 0;
+    if ((int)_RecvDataBuffer.GetDataSize() < nPacketLength) {
+        return 0;
+    }
 
-	return nPacketLength;
+    return nPacketLength;
 }
 
 //int CConnector::DataParsing()
@@ -27,44 +28,37 @@ int CConnector::DataParsing()
 
 bool CConnector::DoUpdate(INT64 biCurrTime)
 {
-	if( _biUpdateTimer < biCurrTime )
-	{
-		_biUpdateTimer = biCurrTime + MILLISEC_A_SEC;
-
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+    if (_biUpdateTimer < biCurrTime) {
+        _biUpdateTimer = biCurrTime + MILLISEC_A_SEC;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool CConnector::CheckHeartbeat(INT64 biCurrTime)
 {
-	if( GetActive() && _biHeartbeatTimer < biCurrTime )
-	{
-		_biHeartbeatTimer = biCurrTime + (MILLISEC_A_SEC * 30);
-
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+    if (GetActive() && _biHeartbeatTimer < biCurrTime) {
+        _biHeartbeatTimer = biCurrTime + (MILLISEC_A_SEC * 30);
+        return true;
+    } else {
+        return false;
+    }
 }
 
 wstring CConnector::GetStateReport()
 {
-	wstring wstrReport = {};
+    wstring wstrReport{};
 
-	if( GetActive() )
-		wstrReport.append(FormatW(L"[%d] connected: %d,", GetUID(), GetSocket()));
-	else
-		wstrReport.append(FormatW(L"[%d] disconnected: ", GetUID()));
+    if (GetActive()) {
+        wstrReport.append(FormatW(L"[%d] connected: %d,", GetUID(), GetSocket()));
+    } else {
+        wstrReport.append(FormatW(L"[%d] disconnected: ", GetUID()));
+    }
 
-	wstrReport.append(FormatW(L"sq:%d,", _SendQueue.size()));
-	wstrReport.append(FormatW(L"rb:(%d/%d),", _RecvDataBuffer.GetDataSize(), _RecvDataBuffer.GetBufferSize()));
-	wstrReport.append(FormatW(L"iq:%d", _InnerQueue.size()));
+    wstrReport.append(FormatW(L"sq:%d,", _SendQueue.size()));
+    wstrReport.append(FormatW(L"rb:(%d/%d),", _RecvDataBuffer.GetDataSize(), _RecvDataBuffer.GetBufferSize()));
+    wstrReport.append(FormatW(L"iq:%d", _InnerQueue.size()));
 
-	return wstrReport;
+    return wstrReport;
 }

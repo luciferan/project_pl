@@ -24,29 +24,28 @@
 class App
 {
 public:
-	//std::list<thread> _threads{};
-	std::list<jthread> _jthreads{};
+    list<thread> _threads{};
 
-	std::stop_source _threadStop;
-	atomic<int> _threadSuspended{ 1 };
-	INT64 _biUpdateTime = 0;
+    stop_source _threadStop;
+    atomic<int> _threadSuspended{1};
+    atomic<int> _threadWait{0};
+    INT64 _biUpdateTime{0};
 
-	//
+    //
 public:
-	App();
-	virtual ~App();
+    App();
+    virtual ~App();
 
-	bool Init();
+    bool Init();
 
-	void Run();
-	void Stop();
-	
-	unsigned int UpdateThread(stop_token token);
-	unsigned int ProcessThread(stop_token token);
-	unsigned int MonitorThread(stop_token token);
+    bool Start();
+    bool Stop();
 
+    unsigned int UpdateThread(stop_token token);
+    unsigned int ProcessThread(stop_token token);
+    unsigned int MonitorThread(stop_token token);
 
-	bool SessionRelease(INT64 biCurrTime);
+    bool SessionRelease(INT64 biCurrTime);
 };
 
 //

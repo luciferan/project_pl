@@ -21,7 +21,7 @@ void MySqlCppConn::SetDbInfo(MySqlDbInfo info)
 sql::Connection* MySqlCppConn::Connect()
 {
     try {
-        if (!_conn ) {
+        if (!_conn) {
             sql::mysql::MySQL_Driver* driver = sql::mysql::get_driver_instance();
             _conn = driver->connect(_dbInfo.server, _dbInfo.username, _dbInfo.password);
             _conn->setSchema(_dbInfo.database);
@@ -64,7 +64,7 @@ sql::Connection* MySqlCppConn::TryReconnect()
     return nullptr;
 }
 
-sql::Connection* MySqlCppConn::GetDbConnection() 
+sql::Connection* MySqlCppConn::GetDbConnection()
 {
     return Connect();
 }
@@ -149,7 +149,7 @@ void MySqlCppConn::_querySample()
         //unique_ptr<sql::ResultSet> res(stmt->executeQuery(query));
 
         DbConnection dbCon(GetDbConnection(), true);
-        sql::ResultSet *res = dbCon.ExecuteQuery(query);
+        sql::ResultSet* res = dbCon.ExecuteQuery(query);
         while (res && res->next()) {
             cout << res->getInt(1) << endl;
         }
@@ -176,7 +176,7 @@ void MySqlCppConn::_querySample()
         DbConnection dbConn(GetDbConnection(), true);
         dbConn.GetStatement(query);
         dbConn.setString("kor");
-        sql::ResultSet *res = dbConn.ExecuteQuery();
+        sql::ResultSet* res = dbConn.ExecuteQuery();
         while (res && res->next()) {
             cout << res->getString(1) << " " << res->getInt(2) << endl;
         }
@@ -222,8 +222,7 @@ MYSQL* MySqlApiConn::Connect()
 
         if (NULL == mysql_select_db(&conn, _dbInfo.database.c_str())) {
             _conn = connection;
-        }
-        else {
+        } else {
             cout << "mysql database select fail" << endl;
             mysql_close(connection);
         }

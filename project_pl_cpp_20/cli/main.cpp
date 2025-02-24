@@ -3,29 +3,15 @@
 //
 int main(int argc, char* argv[])
 {
-	CExceptionReport::GetInstance().ExceptionHandlerBegin();
+    CExceptionReport::GetInstance().ExceptionHandlerBegin();
 
-	//
-	//LoadConfig();
+    //
+    //LoadConfig();
 
-	//
-	App app;
-	if (!app.Init()) {
-		LogError("App Init fail.");
-		return 1;
-	}
-
-	//
-	g_Log.Write(L"system: start.");
-
-	if (!app.Start()) {
-		LogError("App Start fail");
-		return 1;
-	}
-
-	app.Wait();
-
-	//
-	g_Log.Write(L"system: end.");
-	return 0;
+    //
+    g_Log.Write(L"system: start.");
+    App app;
+    app.Run();
+    g_Log.Write(L"system: end.");
+    return 0;
 }

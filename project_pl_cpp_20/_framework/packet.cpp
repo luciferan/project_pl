@@ -4,50 +4,54 @@
 #include "./_common_variable.h"
 
 //
-DWORD MakeNetworkPacket(DWORD dwProtocol, char *pSendData, DWORD dwSendDataSize, char *pSendBuffer, DWORD &dwSendBufferSize)
+DWORD MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDataSize, char* pSendBuffer, DWORD& dwSendBufferSize)
 {
-	sPacketHead head;
-	sPacketBody	body;
-	sPacketTail tail;
+    sPacketHead head;
+    sPacketBody	body;
+    sPacketTail tail;
 
-	head.dwCheckHead = PACKET_CHECK_HEAD_KEY;
-	head.dwLength = sizeof(sPacketHead) + dwSendDataSize + sizeof(sPacketTail);
-	head.dwProtocol = dwProtocol;
+    head.dwCheckHead = PACKET_CHECK_HEAD_KEY;
+    head.dwLength = sizeof(sPacketHead) + dwSendDataSize + sizeof(sPacketTail);
+    head.dwProtocol = dwProtocol;
 
-	body.pData = pSendData;
+    body.pData = pSendData;
 
-	tail.dwCheckTail = PACKET_CHECK_TAIL_KEY;
+    tail.dwCheckTail = PACKET_CHECK_TAIL_KEY;
 
-	if( head.dwLength > dwSendBufferSize )
-		return eResultCode::RESULT_FAIL;
-	
-	int nPos = 0;
-	memcpy(pSendBuffer+nPos, (char*)&head, sizeof(head)); nPos += sizeof(head);
-	memcpy(pSendBuffer+nPos, (char*)&body, dwSendDataSize); nPos += dwSendDataSize;
-	memcpy(pSendBuffer+nPos, (char*)&tail, sizeof(tail)); nPos += sizeof(tail);
+    if (head.dwLength > dwSendBufferSize) {
+        return eResultCode::RESULT_FAIL;
+    }
 
-	dwSendBufferSize = head.dwLength;
+    int nPos = 0;
+    memcpy(pSendBuffer + nPos, (char*)&head, sizeof(head)); nPos += sizeof(head);
+    memcpy(pSendBuffer + nPos, (char*)&body, dwSendDataSize); nPos += dwSendDataSize;
+    memcpy(pSendBuffer + nPos, (char*)&tail, sizeof(tail)); nPos += sizeof(tail);
 
-	//
-	return eResultCode::RESULT_SUCC;
+    dwSendBufferSize = head.dwLength;
+
+    //
+    return eResultCode::RESULT_SUCC;
 };
 
-DWORD ParseNetworkData(CCircleBuffer IN &Buffer, DWORD OUT &dwPacketLength)
+DWORD ParseNetworkData(CCircleBuffer IN& Buffer, DWORD OUT& dwPacketLength)
 {
-	DWORD dwDataSize = Buffer.GetDataSize();
+    DWORD dwDataSize = Buffer.GetDataSize();
 
-	if( sizeof(sPacketHead) > dwDataSize )
-		return eResultCode::RESULT_PENDING;
+    if (sizeof(sPacketHead) > dwDataSize) {
+        return eResultCode::RESULT_PENDING;
+    }
 
-	sPacketHead Head;
-	Buffer.Read((char*)&Head, sizeof(sPacketHead));
+    sPacketHead Head;
+    Buffer.Read((char*)&Head, sizeof(sPacketHead));
 
-	if( PACKET_CHECK_HEAD_KEY != Head.dwCheckHead )
-		return eResultCode::RESULT_INVALID_PACKET;
+    if (PACKET_CHECK_HEAD_KEY != Head.dwCheckHead) {
+        return eResultCode::RESULT_INVALID_PACKET;
+    }
 
-	if( Head.dwLength > dwDataSize )
-		return eResultCode::RESULT_PENDING;
+    if (Head.dwLength > dwDataSize) {
+        return eResultCode::RESULT_PENDING;
+    }
 
-	dwPacketLength = Head.dwLength;
-	return eResultCode::RESULT_SUCC;
+    dwPacketLength = Head.dwLength;
+    return eResultCode::RESULT_SUCC;
 }

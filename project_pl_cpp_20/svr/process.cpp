@@ -28,254 +28,231 @@ App::~App()
 
 bool App::Init()
 {
-	unsigned int uiThreadID = 0;
-	stop_token token = _threadStop.get_token();
-	{
-		_jthreads.emplace_back(&App::UpdateThread, this, token);
-	}
-	{
-		_jthreads.emplace_back(&App::ProcessThread, this, token);
-	}
-	{
-		_jthreads.emplace_back(&App::MonitorThread, this, token);
-	}
+    _threads.emplace_back(&App::UpdateThread, this, _threadStop.get_token());
+    _threads.emplace_back(&App::ProcessThread, this, _threadStop.get_token());
+    _threads.emplace_back(&App::MonitorThread, this, _threadStop.get_token());
 
-	return true;
+    return true;
 }
 
-void App::Run()
+bool App::Start()
 {
-	_threadSuspended = 0;
-	_threadSuspended.notify_all();
+    _threadSuspended = 0;
+    _threadSuspended.notify_all();
+
+    return true;
 }
 
-void App::Stop()
+bool App::Stop()
 {
-	Network::GetInstance().Stop();
+    _threadStop.request_stop();
 
-	for (jthread &t : _jthreads) {
-		t.request_stop();
-	}
+    Network::GetInstance().Stop();
+    CRecvPacketQueue::GetInstance().ForceActivateQueueEvent();
+    CSendPacketQueue::GetInstance().ForceActivateQueueEvent();
 
-	CRecvPacketQueue::GetInstance().ForceActivateQueueEvent();
-	CSendPacketQueue::GetInstance().ForceActivateQueueEvent();
+    for (auto& t : _threads) {
+        t.join();
+    }
+
+    return true;
 }
 
 unsigned int App::ProcessThread(stop_token token)
 {
-	Network &net = Network::GetInstance();
+    Log(format("log: {} create", source_location::current().function_name()));
+    _threadSuspended.wait(1);
 
-	WCHAR wcsHostIP[] = L"127.0.0.1";
-	WORD wHostPort = 60010;
+    Network& net{Network::GetInstance()};
 
-	net._config.doListen = true;
-	wcsncpy_s(net._config.listenInfo.wcsIP, eNetwork::MAX_LEN_IP4_STRING, wcsHostIP, lstrlenW(wcsHostIP));
-	net._config.listenInfo.wPort = wHostPort;
+    WCHAR wcsHostIP[]{L"127.0.0.1"};
+    WORD wHostPort{60010};
 
-	if (false == net.Initialize()) {
-		//WriteMiniNetLog(L"error: App::ProcessThread: network initialize fail");
-		Log(format("error: App::{}: network initialize fail", source_location::current().function_name()));
-		return 1;
-	}
-	if (false == net.Start()) {
-		//WriteMiniNetLog(L"error: App::ProcessThread: network start fail");
-		Log(format("error: App::{}: network start fail", source_location::current().function_name()));
-		return 1;
-	}
+    net._config.doListen = true;
+    wcsncpy_s(net._config.listenInfo.wcsIP, eNetwork::MAX_LEN_IP4_STRING, wcsHostIP, lstrlenW(wcsHostIP));
+    net._config.listenInfo.wPort = wHostPort;
 
-	CRecvPacketQueue &RecvPacketQueue = CRecvPacketQueue::GetInstance();
-	CSendPacketQueue &SendPacketQueue = CSendPacketQueue::GetInstance();
-	CUserSessionMgr &UserSessionMgr = CUserSessionMgr::GetInstance();
+    if (false == net.Initialize()) {
+        Log(format("error: App::{}: network initialize fail", source_location::current().function_name()));
+        return 1;
+    }
+    if (false == net.Start()) {
+        Log(format("error: App::{}: network start fail", source_location::current().function_name()));
+        return 1;
+    }
 
-	//
-	CConnector *pConnector = nullptr;
-	CUserSession *pUserSession = nullptr;
-	CPacketStruct *pPacket = nullptr;
+    CRecvPacketQueue& RecvPacketQueue{CRecvPacketQueue::GetInstance()};
+    CSendPacketQueue& SendPacketQueue{CSendPacketQueue::GetInstance()};
+    CUserSessionMgr& UserSessionMgr{CUserSessionMgr::GetInstance()};
 
-	DWORD dwPacketSize = 0;
+    //
+    CConnector* pConnector{nullptr};
+    CUserSession* pUserSession{nullptr};
+    CPacketStruct* pPacket{nullptr};
 
-	_threadSuspended.wait(1);
+    DWORD dwPacketSize{0};
 
-	//
-	//WriteMiniNetLog(L"log: MiniNet::ProcessThread() : start");
-	Log(format("log: {}: start", source_location::current().function_name()));
-	while( !token.stop_requested() )
-	{
-		pPacket = RecvPacketQueue.Pop();
-		if( !pPacket )
-			continue;
+    //
+    Log(format("log: {}: start", source_location::current().function_name()));
+    while (!token.stop_requested()) {
+        pPacket = RecvPacketQueue.Pop();
+        if (!pPacket) {
+            continue;
+        }
 
-		sPacketHead *pHead = (sPacketHead*)pPacket->_pBuffer;
-		sPacketTail *pTail = (sPacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(sPacketTail));
-		if( pTail->dwCheckTail != PACKET_CHECK_TAIL_KEY )
-		{
-			Log("Invliad packet");
-			net.Disconnect(pConnector);
-		}
+        sPacketHead* pHead = (sPacketHead*)pPacket->_pBuffer;
+        sPacketTail* pTail = (sPacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(sPacketTail));
+        if (PACKET_CHECK_TAIL_KEY != pTail->dwCheckTail) {
+            Log("Invliad packet");
+            net.Disconnect(pConnector);
+        }
 
-		pConnector = pPacket->pSession;
-		if( !pConnector )
-		{
-			RecvPacketQueue.ReleasePacketStruct(pPacket); //SAFE_DELETE(pPacket);
-			continue;
-		}
+        pConnector = pPacket->pSession;
+        if (!pConnector) {
+            RecvPacketQueue.ReleasePacketStruct(pPacket); //SAFE_DELETE(pPacket);
+            continue;
+        }
 
-		//
-		pUserSession = (CUserSession*)pConnector->GetParam();
-		if( nullptr == pUserSession )
-		{
-			sPacketHead *pHeader = (sPacketHead*)pPacket->_pBuffer;
-			if( P_AUTH == pHeader->dwProtocol )
-			{
-				SafeLock lock(UserSessionMgr._Lock);
-				pUserSession = UserSessionMgr.GetFreeUserSession();
-				if( !pUserSession )
-				{
-					Log("CUserSessionMgr::GetFreeUserSession() fail");
-				}
-				else
-				{
-					pConnector->SetParam((void*)pUserSession);
-					pUserSession->SetConnector(pConnector);
-				}
-			}
-			else
-			{
-				Log("Invliad packet");
-				net.Disconnect(pConnector);
-			}
-		}
-		else
-		{
-			//CPerformanceCheck(L"ProcessThread(): UserSession::MessageProcess()");
-			pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
-		}
+        //
+        pUserSession = (CUserSession*)pConnector->GetParam();
+        if (nullptr == pUserSession) {
+            sPacketHead* pHeader = (sPacketHead*)pPacket->_pBuffer;
+            if (P_AUTH == pHeader->dwProtocol) {
+                SafeLock lock(UserSessionMgr._Lock);
+                pUserSession = UserSessionMgr.GetFreeUserSession();
+                if (!pUserSession) {
+                    Log("CUserSessionMgr::GetFreeUserSession() fail");
+                } else {
+                    pConnector->SetParam((void*)pUserSession);
+                    pUserSession->SetConnector(pConnector);
+                }
+            } else {
+                Log("Invliad packet");
+                net.Disconnect(pConnector);
+            }
+        } else {
+            //CPerformanceCheck(L"ProcessThread(): UserSession::MessageProcess()");
+            pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
+        }
 
-		//
-		RecvPacketQueue.ReleasePacketStruct(pPacket); //SAFE_DELETE(pPacket);
-	}
+        //
+        RecvPacketQueue.ReleasePacketStruct(pPacket); //SAFE_DELETE(pPacket);
+    }
 
-	net.Stop();
+    net.Stop();
 
-	//WriteMiniNetLog(L"log: MiniNet::ProcessThread() : end");
-	Log(format("log: {}: end", source_location::current().function_name()));
-	return 0;
+    Log(format("log: {}: end", source_location::current().function_name()));
+    return 1;
 };
 
 //
 unsigned int App::UpdateThread(stop_token token)
 {
-	Network &Net = Network::GetInstance();
-	//CUserSessionMgr &UserSessionMgr = CUserSessionMgr::GetInstance();
+    Log(format("log: {} create", source_location::current().function_name()));
+    _threadSuspended.wait(1);
 
-	//
-	INT64 biCurrTime = 0;
+    Network& Net{Network::GetInstance()};
+    //CUserSessionMgr &UserSessionMgr{CUserSessionMgr::GetInstance()};
 
-	CUserSession *pUserSession = nullptr;
-	//std::list<CUserSession*> ReleaseSessionList = {};
+    //
+    INT64 biCurrTime{0};
 
-	_threadSuspended.wait(1);
+    CUserSession* pUserSession{nullptr};
+    //std::list<CUserSession*> ReleaseSessionList{};
 
-	//WriteMiniNetLog(L"log: MiniNet::UpdateThread() : start");
-	Log(format("log: {}: start", source_location::current().function_name()));
-	while( !token.stop_requested() )
-	{
-		biCurrTime = GetTimeMilliSec();
+    //
+    Log(format("log: {}: start", source_location::current().function_name()));
+    while (!token.stop_requested()) {
+        biCurrTime = GetTimeMilliSec();
 
-		//
-		SessionRelease(biCurrTime);
+        //
+        SessionRelease(biCurrTime);
 
-		//
-		Sleep(1);
-	}
-	//WriteMiniNetLog(L"log: MiniNet::UpdateThread() : end");
-	Log(format("log: {}: end", source_location::current().function_name()));
+        //
+        this_thread::sleep_for(1ms);
+    }
 
-	//
-	return 0;
-}
-
-bool App::SessionRelease(INT64 biCurrTime)
-{
-	CUserSessionMgr& UserSessionMgr = CUserSessionMgr::GetInstance();
-	std::list<CUserSession*> ReleaseSessionList = {};
-
-	{
-		SafeLock lock(UserSessionMgr._Lock);
-		for( CUserSession *pSession : UserSessionMgr._UsedUserSessionList )
-		{
-			if( pSession->CheckUpdateTime(biCurrTime) )
-				continue;
-
-			pSession->SetUpdateTime(biCurrTime + MILLISEC_A_SEC);
-
-			//
-			CConnector *pConnector = pSession->GetConnector();
-			if( !pConnector || !pConnector->GetActive() )
-			{
-				ReleaseSessionList.push_back(pSession);
-				continue;
-			}
-
-			pSession->DoUpdate(biCurrTime);
-		}
-	}
-
-	{
-		for( CUserSession *pSession : ReleaseSessionList )
-		{
-			pSession->Release();
-			UserSessionMgr.ReleaseUserSesssion(pSession);
-		}
-
-		ReleaseSessionList.clear();
-	}
-
-	return true;
+    Log(format("log: {}: end", source_location::current().function_name()));
+    return 1;
 }
 
 unsigned int App::MonitorThread(stop_token token)
 {
-	Network &Net = Network::GetInstance();
-	CUserSessionMgr &UserSessionMgr = CUserSessionMgr::GetInstance();
+    Log(format("log: {} create", source_location::current().function_name()));
+    _threadSuspended.wait(1);
 
-	//
-	INT64 biCurrTime = 0;
-	INT64 biCheckTimer = GetTimeMilliSec() + (MILLISEC_A_SEC * 15);
+    Network& Net{Network::GetInstance()};
+    CUserSessionMgr& UserSessionMgr{CUserSessionMgr::GetInstance()};
 
-	_threadSuspended.wait(1);
+    //
+    INT64 biCurrTime{0};
+    INT64 biCheckTimer{GetTimeMilliSec() + (MILLISEC_A_SEC * 15)};
 
-	//
-	//WriteMiniNetLog(L"log: MiniNet::MonitorThread() : start");
-	Log(format("log: {}: start", source_location::current().function_name()));
-	while( !token.stop_requested() )
-	{
-		//biCurrTime = GetTimeMilliSec();
+    //
+    Log(format("log: {}: start", source_location::current().function_name()));
+    while (!token.stop_requested()) {
+        //biCurrTime = GetTimeMilliSec();
 
-		////
-		//if( biCheckTimer < biCurrTime )
-		//{
-		//	CConnector *pConnector = Net.Connect(HOST_ADDRESS, HOST_PORT);
-		//	if( !pConnector )
-		//	{
-		//		WriteMiniNetLog(L"error: MonitorThread: Connect fail");
-		//	}
-		//	else
-		//	{
-		//		g_Log.Write(L"log: MonitorThread: <%d> Connected. Socket %d", pConnector->GetIndex(), pConnector->GetSocket());
-		//		//WriteMiniNetLog(format(L"log: MonitorThread: <{}> Connected. Socket {}", pConnector->GetIndex(), pConnector->GetSocket()));
-		//		Net.Disconnect(pConnector);
-		//	}
+        ////
+        //if( biCheckTimer < biCurrTime )
+        //{
+        //	CConnector *pConnector = Net.Connect(HOST_ADDRESS, HOST_PORT);
+        //	if( !pConnector )
+        //	{
+        //		WriteMiniNetLog(L"error: MonitorThread: Connect fail");
+        //	}
+        //	else
+        //	{
+        //		g_Log.Write(L"log: MonitorThread: <%d> Connected. Socket %d", pConnector->GetIndex(), pConnector->GetSocket());
+        //		//WriteMiniNetLog(format(L"log: MonitorThread: <{}> Connected. Socket {}", pConnector->GetIndex(), pConnector->GetSocket()));
+        //		Net.Disconnect(pConnector);
+        //	}
 
-		//	biCheckTimer = GetTimeMilliSec() + (MILLISEC_A_SEC * 15);
-		//}
+        //	biCheckTimer = GetTimeMilliSec() + (MILLISEC_A_SEC * 15);
+        //}
 
-		//
-		//Sleep(1);
-		this_thread::sleep_for(1ms);
-	}
+        //
+        //Sleep(1);
+        this_thread::sleep_for(1ms);
+    }
 
-	//WriteMiniNetLog(L"log: MiniNet::MonitorThread() : start");
-	Log(format("log: {}: end", source_location::current().function_name()));
-	return 0;
+    Log(format("log: {}: end", source_location::current().function_name()));
+    return 1;
+}
+
+bool App::SessionRelease(INT64 biCurrTime)
+{
+    CUserSessionMgr& UserSessionMgr{CUserSessionMgr::GetInstance()};
+    std::list<CUserSession*> ReleaseSessionList{};
+
+    {
+        SafeLock lock(UserSessionMgr._Lock);
+        for (CUserSession* pSession : UserSessionMgr._UsedUserSessionList) {
+            if (pSession->CheckUpdateTime(biCurrTime)) {
+                continue;
+            }
+
+            pSession->SetUpdateTime(biCurrTime + MILLISEC_A_SEC);
+
+            //
+            CConnector* pConnector = pSession->GetConnector();
+            if (!pConnector || !pConnector->GetActive()) {
+                ReleaseSessionList.push_back(pSession);
+                continue;
+            }
+
+            pSession->DoUpdate(biCurrTime);
+        }
+    }
+
+    {
+        for (CUserSession* pSession : ReleaseSessionList) {
+            pSession->Release();
+            UserSessionMgr.ReleaseUserSesssion(pSession);
+        }
+
+        ReleaseSessionList.clear();
+    }
+
+    return true;
 }

@@ -14,28 +14,26 @@
 //
 //bool LoadConfig();
 
-class App {
+class App
+{
 private:
-	atomic<int> _threadSuspended{ 1 };
-	atomic<int> _threadWait{ 1 };
-	stop_source _threadStop;
-	
-	list<jthread> _threads;
+    list<thread> _threads{};
 
+    stop_source _threadStop;
+    atomic<int> _threadSuspended{1};
+    atomic<int> _threadWait{0};
 
+    //
 public:
-	App() {}
-	~App() {}
+    App() {}
+    ~App() {}
 
-	bool Init();
-	bool Start();
-	void Wait();
-	bool Stop();
+    bool Run();
+    bool Stop();
 
-	int ProcessThread(stop_token token);
-	int UpdateThread(stop_token token);
-
-	int CommandThread(stop_token token);
+    int ProcessThread(stop_token token);
+    int UpdateThread(stop_token token);
+    int CommandThread(stop_token token);
 };
 
 //

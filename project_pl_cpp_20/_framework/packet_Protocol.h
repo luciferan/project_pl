@@ -19,7 +19,7 @@ struct sP_HEARTBEAT
 const DWORD P_ECHO = 0xffffffff;
 struct sP_ECHO
 {
-	char echoData[32] = {};
+    char echoData[32]{};
 };
 
 #pragma pack(pop)
