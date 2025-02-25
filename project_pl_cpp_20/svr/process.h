@@ -4,18 +4,21 @@
 
 //
 #include "../_framework/network.h"
-#include "../_framework/PacketDataQueue.h"
-#include "../_lib/ExceptionReport.h"
+#include "../_framework/packet_data_queue.h"
+#include "../_lib/exception_report.h"
 #include "../_lib/util.h"
 
 #include "../_lib/Log.h"
 //#include "./Config.h"
+
+#include "../_lib/operator.h"
 
 #include <thread>
 #include <mutex>
 #include <atomic>
 #include <list>
 #include <set>
+
 
 //
 //bool LoadConfig();
@@ -30,6 +33,8 @@ public:
     atomic<int> _threadSuspended{1};
     atomic<int> _threadWait{0};
     INT64 _biUpdateTime{0};
+
+    CommandUnitQueue _commandQueue;
 
     //
 public:

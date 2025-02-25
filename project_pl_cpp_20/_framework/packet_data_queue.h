@@ -1,6 +1,6 @@
 #pragma once
-#ifndef __PACKETDATAQUEUE_H__
-#define __PACKETDATAQUEUE_H__
+#ifndef __PACKET_DATA_QUEUE_H__
+#define __PACKET_DATA_QUEUE_H__
 
 //
 #include <unordered_map>
@@ -195,4 +195,4 @@ public:
 };
 
 //
-#endif //__PACKETDATAQUEUE_H__
+#endif //__PACKET_DATA_QUEUE_H__

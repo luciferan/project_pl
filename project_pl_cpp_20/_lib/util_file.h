@@ -1,6 +1,6 @@
 #pragma once
-#ifndef __UTIL_FILEMANAGEMENT_H__
-#define __UTIL_FILEMANAGEMENT_H__
+#ifndef __UTIL_FILE_H__
+#define __UTIL_FILE_H__
 
 //
 #include <windows.h>
@@ -19,4 +19,4 @@ int MakeMD5(wstring wstrFilePath, wstring& wstrChecksum);
 bool CheckMD5(wstring wstrFilePath, wstring wstrChecksum);
 
 //
-#endif //__UTIL_FILEMANAGEMENT_H__
+#endif //__UTIL_FILE_H__

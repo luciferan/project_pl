@@ -11,6 +11,8 @@
 #include <process.h>
 #include <wchar.h>
 
+#include "./_common.h"
+
 #include <queue>
 #include <string>
 #include <set>
@@ -21,8 +23,6 @@
 #include <atomic>
 #include <functional>
 #include <source_location>
-
-#include "./_common_variable.h"
 
 ////
 //extern void WriteMiniNetLog(std::wstring wstr);
@@ -35,6 +35,7 @@
 using namespace std;
 
 class CConnector;
+class CNetworkBuffer;
 
 struct HostInfo
 {
@@ -94,6 +95,8 @@ public:
 
     bool lookup_host(const char* hostname, std::string& hostIP);
     CConnector* Connect(WCHAR* pwcszIP, const WORD wPort);
+    void DoSend(CConnector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwSendCompleteSize);
+    void DoRecv(CConnector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwRecvCompleteSize);
 
     bool Disconnect(CConnector* pSession);
     bool Disconnect(SOCKET socket);

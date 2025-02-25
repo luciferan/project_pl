@@ -1,6 +1,6 @@
 #pragma once
-#ifndef __COMMON_VARIABLE_H__
-#define __COMMON_VARIABLE_H__
+#ifndef __COMMON_H__
+#define __COMMON_H__
 
 enum eResultCode
 {
@@ -12,7 +12,6 @@ enum eResultCode
 
     RESULT_PENDING,
 };
-
 
 enum eNetwork
 {
@@ -27,4 +26,4 @@ enum eNetwork
 #define SAFE_DELETE(ptr) { if(ptr) delete ptr; ptr = nullptr; }
 #define SAFE_DELETE_ARRAY(ptr) { if(ptr) delete[] ptr; ptr = nullptr; }
 
-#endif //__COMMON_VARIABLE_H__
+#endif //__COMMON_H__

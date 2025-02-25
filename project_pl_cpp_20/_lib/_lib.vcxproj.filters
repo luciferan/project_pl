@@ -5,10 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="헤더 파일">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
     <Filter Include="리소스 파일">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -24,7 +20,7 @@
     <ClCompile Include="_json.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="exceptionReport.cpp">
+    <ClCompile Include="exception_report.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="log.cpp">
@@ -36,10 +32,13 @@
     <ClCompile Include="util_common.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="util_FileManagement.cpp">
+    <ClCompile Include="util_file.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="MySQL.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="operator.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -53,7 +52,7 @@
     <ClInclude Include="_json.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="exceptionReport.h">
+    <ClInclude Include="exception_report.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="log.h">
@@ -68,10 +67,13 @@
     <ClInclude Include="util_common.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="util_FileManagement.h">
+    <ClInclude Include="util_file.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="MySQL.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="operator.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
   </ItemGroup>

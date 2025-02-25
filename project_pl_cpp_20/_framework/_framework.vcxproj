@@ -22,13 +22,17 @@
     <ClInclude Include="buffer.h" />
     <ClInclude Include="certifyConvertData.h" />
     <ClInclude Include="certifyData.h" />
+    <ClInclude Include="character.h" />
     <ClInclude Include="connector.h" />
     <ClInclude Include="defaultConfig.h" />
     <ClInclude Include="network.h" />
     <ClInclude Include="packet.h" />
-    <ClInclude Include="packetDataQueue.h" />
-    <ClInclude Include="packet_Protocol.h" />
-    <ClInclude Include="_common_variable.h" />
+    <ClInclude Include="packet_data_queue.h" />
+    <ClInclude Include="packet_protocol_cs.h" />
+    <ClInclude Include="packet_protocol_base.h" />
+    <ClInclude Include="packet_protocol_sc.h" />
+    <ClInclude Include="packet_svr.h" />
+    <ClInclude Include="_common.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="buffer.cpp" />
@@ -39,7 +43,8 @@
     <ClCompile Include="network.cpp" />
     <ClCompile Include="network_impl.cpp" />
     <ClCompile Include="packet.cpp" />
-    <ClCompile Include="packetDataQueue.cpp" />
+    <ClCompile Include="packet_data_queue.cpp" />
+    <ClCompile Include="packet_cli.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

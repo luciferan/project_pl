@@ -10,6 +10,7 @@
 
 //
 std::wstring GetFileName();
+INT64 GetUniqueSerialId();
 
 //
 #endif //__UTIL_COMMON_H__

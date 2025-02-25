@@ -1,6 +1,6 @@
 #pragma once
-#ifndef __EXCEPTIONREPORT_H__
-#define __EXCEPTIONREPORT_H__
+#ifndef __EXCEPTION_REPORT_H__
+#define __EXCEPTION_REPORT_H__
 
 //
 #include <windows.h>
@@ -34,4 +34,4 @@ public:
 };
 
 //
-#endif //__EXCEPTIONREPORT_H__
+#endif //__EXCEPTION_REPORT_H__

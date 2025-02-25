@@ -5,6 +5,8 @@ int main(int argc, char* argv[])
 {
     CExceptionReport::GetInstance().ExceptionHandlerBegin();
 
+    srand((unsigned int)time(NULL));
+
     //
     //LoadConfig();
 

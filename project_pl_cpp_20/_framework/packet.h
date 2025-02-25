@@ -3,12 +3,12 @@
 #define __PACKET_H__
 
 //
-//#include "packet_Protocol.h"
+//#include "packet_Protocol_base.h"
 #include "buffer.h"
 
 //
-const DWORD PACKET_CHECK_HEAD_KEY{0x00000000};
-const DWORD PACKET_CHECK_TAIL_KEY{0x10000000};
+static const DWORD PACKET_CHECK_HEAD_KEY{0x00000000};
+static const DWORD PACKET_CHECK_TAIL_KEY{0x10000000};
 
 //
 struct sPacketHead

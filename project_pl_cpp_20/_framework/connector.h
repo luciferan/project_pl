@@ -7,25 +7,23 @@
 #include <WS2tcpip.h>
 #include <Windows.h>
 
+#include "./_common.h"
+#include "./buffer.h"
+
+#include "../_lib/util_string.h"
+#include "../_lib/safeLock.h"
+#include "../_lib/log.h"
+
+
 #include <unordered_map>
 #include <queue>
 #include <list>
 #include <atomic>
 
-#include "../_lib/log.h"
-
-#include "../_lib/safeLock.h"
-#include "../_lib/util_string.h"
-
-#include "./_common_variable.h"
-
-#include "./buffer.h"
-
 //
 using namespace std;
 class CConnector;
 
-//
 struct OVERLAPPED_EX
 {
     OVERLAPPED overlapped{0,};

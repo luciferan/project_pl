@@ -1,30 +1,35 @@
 #pragma once
-#ifndef __USERSESSION_H__
-#define __USERSESSION_H__
+#ifndef __USER_SESSION_H__
+#define __USER_SESSION_H__
 
-//
 #include <Windows.h>
+
+#include "../_framework/_common.h"
+#include "../_framework/packet_svr.h"
+#include "../_lib/safeLock.h"
+
+#include "../_framework/character.h"
 
 #include <list>
 #include <queue>
-
-#include "../_lib/safeLock.h"
 
 using namespace std;
 
 //
 class CConnector;
-
-//
 class CUserSession
 {
 private:
+    Lock _lock;
     DWORD _dwIndex{0};
-
     CConnector* _pConnector{nullptr};
 
-    INT64 _biHeartBeat{0};
+    INT64 _biHeartbeatTimer{0};
+    unsigned int _nHeartbeatCount{0};
     INT64 _biUpdateTime{0};
+
+public:
+    Character _nub;
 
 public:
     bool _bAuthed{false};
@@ -52,18 +57,24 @@ public:
     INT64 GetUpdateTime() { return _biUpdateTime; }
     bool CheckUpdateTime(INT64 biCurrTime) { return (_biUpdateTime > biCurrTime); }
 
-    //
-    int MessageProcess(char* pData, int nLen);
-    int DoUpdate(INT64 uiCurrTime);
+    Lock& GetLock() { return _lock; }
 
+    INT64 GetHeartbeatTimer() { return _biHeartbeatTimer; }
+    void SetHeartbeatTimer(INT64 biCurrTime) { _biHeartbeatTimer = biCurrTime; }
+    int GetHeartbeat() { return _nHeartbeatCount;  }
+    int IncHeartbeat() { return InterlockedIncrement(&_nHeartbeatCount); }
+    int DecHeartbeat() { return InterlockedDecrement(&_nHeartbeatCount); }
+
+    //
     eResultCode SendPacketData(DWORD dwProtocol, char* pData, DWORD dwDataSize);
+    eResultCode SendPacket(PacketBaseS2C* packetData, DWORD packetSize);
 
     //
-    eResultCode RepAuth();
-    eResultCode RepEcho();
+    int DoUpdate(INT64 uiCurrTime);
+    bool MessageProcess(char* pData, int nLen);
 };
 
-//
+// CUserSessionMgr --------------------------------------------------------------
 class CUserSessionMgr
 {
 private:
@@ -90,7 +101,7 @@ private:
         _nMaxUserSessionCount = nMaxCount;
     }
 
-    ~CUserSessionMgr()
+    virtual ~CUserSessionMgr()
     {
         _UserSessionList.clear();
         _FreeUserSessionList.clear();
@@ -127,7 +138,6 @@ public:
 
         return pRet;
     }
-
     void ReleaseUserSesssion(CUserSession* pUserSession)
     {
         //pUserSession->Release();
@@ -145,4 +155,12 @@ public:
     }
 };
 
-#endif //__USERSESSION_H__
+
+static bool C2S_Auth(CUserSession* userSession, const CS_P_AUTH& packet);
+static bool C2S_Enter(CUserSession* userSession, const CS_P_ENTER& packet);
+static bool C2S_Move(CUserSession* userSession, const CS_P_MOVE& packet);
+static bool C2S_Heartbeat(CUserSession* userSession, const CS_P_HEARTBEAT& packet);
+static bool C2S_Interaction(CUserSession* userSession, const CS_P_INTERACTION& packet);
+static bool C2S_Echo(CUserSession* userSession, const CS_P_ECHO& packet);
+
+#endif //__USER_SESSION_H__

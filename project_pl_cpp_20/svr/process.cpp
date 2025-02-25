@@ -1,12 +1,11 @@
 #include "process.h"
 
-#include "../_framework/Connector.h"
-#include "../_framework/PacketDataQueue.h"
-#include "../_framework/Packet.h"
-#include "../_framework/Packet_Protocol.h"
+#include "../_framework/connector.h"
+#include "../_framework/packet_data_queue.h"
+#include "../_framework/packet_svr.h"
 #include "../_lib/log.h"
 
-#include "UserSession.h"
+#include "./user_session.h"
 //#include "Config.h"
 
 #include <iostream>
@@ -15,8 +14,9 @@
 #include <thread>
 #include <mutex>
 
-WCHAR HOST_ADDRESS[1024 + 1] = L"127.0.0.1";
-WORD HOST_PORT = 20001;
+//
+WCHAR HOST_ADDRESS[1024 + 1]{L"127.0.0.1"};
+WORD HOST_PORT{20001};
 
 App::App()
 {
@@ -83,7 +83,7 @@ unsigned int App::ProcessThread(stop_token token)
 
     CRecvPacketQueue& RecvPacketQueue{CRecvPacketQueue::GetInstance()};
     CSendPacketQueue& SendPacketQueue{CSendPacketQueue::GetInstance()};
-    CUserSessionMgr& UserSessionMgr{CUserSessionMgr::GetInstance()};
+    CUserSessionMgr& userSessionMgr{CUserSessionMgr::GetInstance()};
 
     //
     CConnector* pConnector{nullptr};
@@ -114,29 +114,31 @@ unsigned int App::ProcessThread(stop_token token)
         }
 
         //
-        pUserSession = (CUserSession*)pConnector->GetParam();
-        if (nullptr == pUserSession) {
+        if (pUserSession = (CUserSession*)pConnector->GetParam()) {
+            //CPerformanceCheck(L"ProcessThread(): UserSession::MessageProcess()");
+            pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
+        } else {
             sPacketHead* pHeader = (sPacketHead*)pPacket->_pBuffer;
-            if (P_AUTH == pHeader->dwProtocol) {
-                SafeLock lock(UserSessionMgr._Lock);
-                pUserSession = UserSessionMgr.GetFreeUserSession();
-                if (!pUserSession) {
-                    Log("CUserSessionMgr::GetFreeUserSession() fail");
-                } else {
+            if ((PacketTypeC2S)pHeader->dwProtocol == PacketTypeC2S::auth) {
+                SafeLock lock(userSessionMgr._Lock);
+
+                if (pUserSession = userSessionMgr.GetFreeUserSession()) {
                     pConnector->SetParam((void*)pUserSession);
                     pUserSession->SetConnector(pConnector);
+
+                    pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
+                } else {
+                    Log("UserSessionMgr::GetFreeUserSession() fail");
                 }
             } else {
                 Log("Invliad packet");
                 net.Disconnect(pConnector);
             }
-        } else {
-            //CPerformanceCheck(L"ProcessThread(): UserSession::MessageProcess()");
-            pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
         }
+        RecvPacketQueue.ReleasePacketStruct(pPacket); //SAFE_DELETE(pPacket);
 
         //
-        RecvPacketQueue.ReleasePacketStruct(pPacket); //SAFE_DELETE(pPacket);
+        _commandQueue.Tick();
     }
 
     net.Stop();

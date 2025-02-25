@@ -4,8 +4,9 @@
 
 //
 #include "../_framework/network.h"
-#include "../_lib/ExceptionReport.h"
+#include "../_lib/exception_report.h"
 #include "../_lib/util.h"
+#include "../_lib/operator.h"
 
 #include <thread>
 #include <atomic>
@@ -22,6 +23,8 @@ private:
     stop_source _threadStop;
     atomic<int> _threadSuspended{1};
     atomic<int> _threadWait{0};
+
+    CommandUnitQueue _commandQueue;
 
     //
 public:

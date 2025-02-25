@@ -138,24 +138,26 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="exceptionReport.cpp" />
+    <ClCompile Include="exception_report.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="MySQL.cpp" />
+    <ClCompile Include="operator.cpp" />
     <ClCompile Include="safeLock.cpp" />
     <ClCompile Include="util_common.cpp" />
-    <ClCompile Include="util_FileManagement.cpp" />
+    <ClCompile Include="util_file.cpp" />
     <ClCompile Include="util_string.cpp" />
     <ClCompile Include="util_time.cpp" />
     <ClCompile Include="_json.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="exceptionReport.h" />
+    <ClInclude Include="exception_report.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="MySQL.h" />
+    <ClInclude Include="operator.h" />
     <ClInclude Include="safeLock.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="util_common.h" />
-    <ClInclude Include="util_FileManagement.h" />
+    <ClInclude Include="util_file.h" />
     <ClInclude Include="util_string.h" />
     <ClInclude Include="util_time.h" />
     <ClInclude Include="_json.h" />

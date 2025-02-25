@@ -2,8 +2,8 @@
 #ifndef __SAFELOCK_H__
 #define __SAFELOCK_H__
 
-//#define __CRITICAL_SECTION_LOCK__
-#define __MUTEX_LOCK__
+#define __CRITICAL_SECTION_LOCK__
+//#define __MUTEX_LOCK__
 
 //
 #ifdef __CRITICAL_SECTION_LOCK__

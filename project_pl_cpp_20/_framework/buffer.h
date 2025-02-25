@@ -12,7 +12,7 @@
 
 //
 class CConnector;
-const int MAX_PACKET_BUFFER_SIZE = 1024 * 100;
+static const int MAX_PACKET_BUFFER_SIZE = 1024 * 10;
 
 //
 class CBuffer

@@ -1,30 +1,33 @@
 #pragma once
-#ifndef __USERSESSION_H__
-#define __USERSESSION_H__
+#ifndef __USER_SESSION_H__
+#define __USER_SESSION_H__
 
-//
 #include <Windows.h>
+
+#include "../_framework/_common.h"
+#include "../_framework/packet_cli.h"
+#include "../_lib/safeLock.h"
+
+#include "../_framework/character.h"
 
 #include <list>
 #include <queue>
 
-#include "../_lib/safeLock.h"
+using namespace std;
 
 //
 class CConnector;
-
-//
 class CUserSession
 {
 private:
     DWORD _dwIndex{0};
-
     CConnector* _pConnector{nullptr};
 
     DWORD _dwUsed{0};
     DWORD _dwActive{0};
 
-    INT64 _uiHeartBeat{0};
+public:
+    Character _nub;
 
     //
 public:
@@ -44,12 +47,16 @@ public:
 
     int DoUpdate(INT64 uiCurrTime);
     eResultCode SendPacketData(DWORD dwProtocol, char* pData, DWORD dwDataSize);
+    eResultCode SendPacket(PacketBaseC2S* packetData, DWORD packetSize);
 
     //
     eResultCode ReqAuth();
-    eResultCode ReqEcho();
+    eResultCode ReqEnter();
+    eResultCode ReqMove(int posX, int posY);
+    eResultCode ReqInteraction(int targetId, int type);
 
     eResultCode RepHeartBeat();
+    eResultCode ReqEcho();
 };
 
 //
@@ -139,4 +146,11 @@ public:
     }
 };
 
-#endif //__USERSESSION_H__
+bool S2C_AuthResult(CUserSession* userSession, const SC_P_AUTH_RESULT& packet);
+bool S2C_Enter(CUserSession* userSession, const SC_P_ENTER& packet);
+bool S2C_Move(CUserSession* userSession, const SC_P_MOVE& packet);
+bool S2C_Interaction(CUserSession* userSession, const SC_P_INTERACTION& packet);
+bool S2C_Heartbeat(CUserSession* userSession, const SC_P_HEARTBEAT& packet);
+bool S2C_Echo(CUserSession* userSession, const SC_P_ECHO& packet);
+
+#endif //__USER_SESSION_H__

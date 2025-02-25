@@ -17,44 +17,6 @@ int CConnector::DataParsing()
     return nPacketLength;
 }
 
-//int CConnector::DataParsing()
-//{
-//	int nPacketLength = 0;
-//
-//	DWORD dwRet = ParseNetworkData(_RecvDataBuffer.GetBuffer(), _RecvDataBuffer.GetDataSize(), (DWORD&)nPacketLength);
-//	switch( dwRet )
-//	{
-//	case eResultCode::RESULT_INVALID_PACKET:
-//		return -1;
-//		break;
-//	}
-//
-//	return nPacketLength;
-//}
-
-//int CConnector::DataParsing()
-//{
-//	int nPacketLength = 0;
-//	_RecvDataBuffer.Read((char*)&nPacketLength, sizeof(int));
-//
-//	if( _RecvDataBuffer.GetDataSize() < nPacketLength )
-//		return 0;
-//
-//	return nPacketLength;
-//}
-
-//int CConnector::DataParsing()
-//{
-//	int nPacketLength = 0;
-//	_RecvDataBuffer.Read((char*)&nPacketLength, sizeof(int));
-//	nPacketLength = htonl(nPacketLength);
-//
-//	if( _RecvDataBuffer.GetDataSize() < nPacketLength )
-//		return 0;
-//
-//	return nPacketLength;
-//}
-
 bool CConnector::DoUpdate(INT64 biCurrTime)
 {
     if (_biUpdateTimer < biCurrTime) {

@@ -1,20 +1,17 @@
 #include "packet.h"
 #include "buffer.h"
 
-#include "./_common_variable.h"
+#include "./_common.h"
 
 //
 DWORD MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDataSize, char* pSendBuffer, DWORD& dwSendBufferSize)
 {
     sPacketHead head;
-    sPacketBody	body;
     sPacketTail tail;
 
     head.dwCheckHead = PACKET_CHECK_HEAD_KEY;
     head.dwLength = sizeof(sPacketHead) + dwSendDataSize + sizeof(sPacketTail);
     head.dwProtocol = dwProtocol;
-
-    body.pData = pSendData;
 
     tail.dwCheckTail = PACKET_CHECK_TAIL_KEY;
 
@@ -24,7 +21,7 @@ DWORD MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDataSize,
 
     int nPos = 0;
     memcpy(pSendBuffer + nPos, (char*)&head, sizeof(head)); nPos += sizeof(head);
-    memcpy(pSendBuffer + nPos, (char*)&body, dwSendDataSize); nPos += dwSendDataSize;
+    memcpy(pSendBuffer + nPos, (char*)pSendData, dwSendDataSize); nPos += dwSendDataSize;
     memcpy(pSendBuffer + nPos, (char*)&tail, sizeof(tail)); nPos += sizeof(tail);
 
     dwSendBufferSize = head.dwLength;

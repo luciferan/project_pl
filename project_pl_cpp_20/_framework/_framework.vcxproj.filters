@@ -11,7 +11,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="_common_variable.h">
+    <ClInclude Include="_common.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="buffer.h">
@@ -35,10 +35,22 @@
     <ClInclude Include="packet.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="packet_Protocol.h">
+    <ClInclude Include="packet_protocol_base.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="packetDataQueue.h">
+    <ClInclude Include="packet_data_queue.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="packet_protocol_cs.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="packet_protocol_sc.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="packet_svr.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="character.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -67,7 +79,10 @@
     <ClCompile Include="packet.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="packetDataQueue.cpp">
+    <ClCompile Include="packet_data_queue.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="packet_cli.h">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

@@ -143,11 +143,11 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="network_impl.cpp" />
     <ClCompile Include="process.cpp" />
-    <ClCompile Include="userSession.cpp" />
+    <ClCompile Include="user_session.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="process.h" />
-    <ClInclude Include="userSession.h" />
+    <ClInclude Include="user_session.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\_framework\_framework.vcxproj">

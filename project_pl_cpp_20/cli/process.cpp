@@ -1,13 +1,13 @@
 #include "process.h"
 
-#include "../_framework/Connector.h"
-#include "../_framework/PacketDataQueue.h"
-#include "../_framework/Packet.h"
-#include "../_framework/Packet_Protocol.h"
+#include "../_framework/connector.h"
+#include "../_framework/packet_data_queue.h"
+#include "../_framework/packet_cli.h"
 #include "../_lib/log.h"
 
-#include "UserSession.h"
+#include "./user_session.h"
 //#include "Config.h"
+#include "./command.cpp"
 
 #include <iostream>
 #include <format>
@@ -99,7 +99,7 @@ int App::ProcessThread(stop_token token)
             pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
         } else {
             sPacketHead* pHeader = (sPacketHead*)pPacket->_pBuffer;
-            if (P_AUTH == pHeader->dwProtocol) {
+            if ((PacketTypeS2C)pHeader->dwProtocol == PacketTypeS2C::auth_result) {
                 if (pUserSession = sessionMgr.GetFreeUserSession()) {
                     pConnector->SetParam((void*)pUserSession);
                     pUserSession->SetConnector(pConnector);
@@ -139,6 +139,8 @@ int App::UpdateThread(stop_token token)
         for (CUserSession* pSession : sessionList) {
             pSession->DoUpdate(uiCurrTime);
         }
+
+        _commandQueue.Tick();
     }
 
     Log(format("log: {}: end", source_location::current().function_name()));
@@ -187,11 +189,17 @@ int App::CommandThread(stop_token token)
                 }
             }
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/disconnect", cmdTokens[0].length())) {
-            if (pConnector) net.Disconnect(pConnector);
+            if (pConnector) {
+                net.Disconnect(pConnector);
+            }
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/auth", cmdTokens[0].length())) {
-            if (pSession) pSession->ReqAuth();
+            if (pSession) {
+                pSession->ReqAuth();
+            }
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/send", cmdTokens[0].length())) {
-            if (pSession) pSession->ReqEcho();
+            if (pSession) {
+                pSession->ReqEcho();
+            }
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/sendLoop", cmdTokens[0].length())) {
             int loopCount{5};
             if (2 <= cmdTokens.size()) {
@@ -211,6 +219,13 @@ int App::CommandThread(stop_token token)
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/exit", cmdTokens[0].length())) {
             Stop();
             break;
+        } else {
+            _commandQueue.Add(new TestCommandUnit);
+
+            DynamicCommandUnit::Operation cmd = []() {
+                cout << "call dynamic oerator" << endl;
+            };
+            _commandQueue.Add(new DynamicCommandUnit(cmd));
         }
     }
 

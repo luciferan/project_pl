@@ -11,3 +11,9 @@ std::wstring GetFileName()
 
     return wcsFileName;
 }
+
+INT64 GetUniqueSerialId()
+{
+    static INT64 unique_id_generator{0};
+    return ++unique_id_generator;
+}
