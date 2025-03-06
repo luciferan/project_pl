@@ -11,6 +11,12 @@ history
 - 패킷처리 함수포인터로 변경
 - 패킷큐 구조 변경. 처리는 커맨드큐로 이동할수 있도록 수정
 
+#20250306
+- 메모리풀 변경
+- std::allocator를 사용하는 ObjectPool
+- ObjectPool을 사용하면서 사용중인 객체가 관리가 필요하면 ObjectMgrBase
+- new 할당으로 처리하는 ObjectPoolMgrBase
+
 #20250226
 - command queue 추가
 - 패킷 프로토콜 수정
