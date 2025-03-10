@@ -1,27 +1,46 @@
-﻿#include "../_framework/Connector.h"
+﻿#include "stdafx.h"
+
+#include "../_framework/Connector.h"
 #include "../_framework/Packet.h"
 #include "../_lib/util.h"
 
 #include "./user_session.h"
+#include "./user_session_mgr.h"
+#include "./process.h"
+#include "./command_unit_process.h"
+
+#include <atomic>
 
 //
-int CUserSession::Clear()
+CUserSession::CUserSession()
 {
+    static atomic<DWORD> unique_user_session_uid{0};
+    _dwUid = ++unique_user_session_uid;
+}
+
+CUserSession::~CUserSession()
+{
+}
+
+void CUserSession::Release()
+{
+    if (_nub.GetZoneId()) {
+        SafeLock lock(_lock);
+        INT64 token = _nub.GetToken();
+        int zoneId = _nub.GetZoneId();
+
+        GetCmdQueue().Add(new ZoneLeave(token, zoneId));
+    }
+
+    //
     _biHeartbeatTimer = 0;
     _nHeartbeatCount = 0;
     _biUpdateTime = 0;
 
     if (_pConnector) {
         _pConnector->SetParam(nullptr);
+        _pConnector->TryRelease();
     }
-
-    return 0;
-}
-
-int CUserSession::Release()
-{
-    Clear();
-    return 0;
 }
 
 eResultCode CUserSession::SendPacketData(DWORD dwProtocol, char* pData, DWORD dwSendDataSize)
@@ -45,13 +64,53 @@ eResultCode CUserSession::SendPacket(PacketBaseS2C* packetData, DWORD packetSize
     return _pConnector->AddSendData(sendBuffer, sendBufferSize);
 }
 
-int CUserSession::DoUpdate(INT64 uiCurrTime)
+eResultCode CUserSession::SendPacket(char* packetBuffer, DWORD packetSize)
 {
-    if (_biHeartbeatTimer < uiCurrTime) {
-        _biHeartbeatTimer = uiCurrTime + (MILLISEC_A_SEC * 30);
-    }
+    return _pConnector->AddSendData(packetBuffer, packetSize);
+}
 
-    return 0;
+//void CUserSession::DoUpdate(INT64 biCurrTime)
+//{
+//    if (_biUpdateTime < biCurrTime) {
+//        _biUpdateTime = biCurrTime + (MILLISEC_A_SEC * 5);
+//
+//        if (_pConnector == nullptr || !_pConnector->GetActive()) {
+//            UserSessionMgr::GetInstance().SetReleaseObj(this);
+//            _biUpdateTime = INT64_MAX;
+//            return;
+//        }
+//
+//        if (_biHeartbeatTimer < biCurrTime && _pConnector->GetActive()) {
+//            _biHeartbeatTimer = biCurrTime + (MILLISEC_A_SEC * 10);
+//            if (5 < IncHeartbeat()) {
+//
+//            }
+//            SC_P_HEARTBEAT sendPacket;
+//            SendPacket(&sendPacket, sizeof(sendPacket));
+//        }
+//    }
+//}
+
+void CUserSession::DoUpdate(SafeLock& mgrLock, INT64 biCurrTime)
+{
+    if (_biUpdateTime < biCurrTime) {
+        _biUpdateTime = biCurrTime + (MILLISEC_A_SEC * 5);
+
+        if (_pConnector == nullptr || !_pConnector->GetActive()) {
+            UserSessionMgr::GetInstance().SetReleaseObj(mgrLock, this);
+            _biUpdateTime = INT64_MAX;
+            return;
+        }
+
+        if (_biHeartbeatTimer < biCurrTime && _pConnector->GetActive()) {
+            _biHeartbeatTimer = biCurrTime + (MILLISEC_A_SEC * 10);
+            if (5 < IncHeartbeat()) {
+
+            }
+            SC_P_HEARTBEAT sendPacket;
+            SendPacket(&sendPacket, sizeof(sendPacket));
+        }
+    }
 }
 
 bool CUserSession::MessageProcess(char* pData, int nLen)
@@ -74,6 +133,9 @@ bool CUserSession::MessageProcess(char* pData, int nLen)
         break;
     case PacketTypeC2S::enter:
         C2S_Enter(this, *((CS_P_ENTER*)pPacketData));
+        break;
+    case PacketTypeC2S::leave:
+        C2S_LEAVE(this, *((CS_P_LEAVE*)pPacketData));
         break;
     case PacketTypeC2S::move:
         C2S_Move(this, *((CS_P_MOVE*)pPacketData));
@@ -106,8 +168,8 @@ static bool C2S_Auth(CUserSession* userSession, const CS_P_AUTH& packet)
     SafeLock lock(userSession->GetLock());
 
     //
-    userSession->_nub.id = reqId;
-    userSession->_nub.token = token;
+    userSession->_nub.SetId(reqId);
+    userSession->_nub.SetToken(token);
 
     //
     SC_P_AUTH_RESULT sendPacket;
@@ -119,20 +181,36 @@ static bool C2S_Auth(CUserSession* userSession, const CS_P_AUTH& packet)
 
 static bool C2S_Enter(CUserSession* userSession, const CS_P_ENTER& packet)
 {
+    int zoneId = 0;
     int posX = rand() % 1000;
     int posY = rand() % 1000;
 
     SafeLock lock(userSession->GetLock());
 
     //
-    INT64 token = userSession->_nub.token;
-    userSession->_nub.pos_x = rand() % 1000;
-    userSession->_nub.pos_y = rand() % 1000;
+    INT64 token = userSession->_nub.GetToken();
+    userSession->_nub.SetPos(zoneId, posX, posY);
 
-    //
-    SC_P_ENTER sendPacket;
-    sendPacket.SetPos(token, posX, posY);
-    userSession->SendPacket(&sendPacket, sizeof(sendPacket));
+    GetCmdQueue().Add(new ZoneEnter(token, zoneId, posX, posY));
+
+    //ZoneMgr::GetInstance().EnterCharacter(zoneId, userSession->GetCharacter());
+
+    ////
+    //SC_P_ENTER sendPacket;
+    //sendPacket.SetPos(token, posX, posY);
+    //userSession->SendPacket(&sendPacket, sizeof(sendPacket));
+
+    return true;
+}
+
+static bool C2S_LEAVE(CUserSession* userSession, const CS_P_LEAVE& packet)
+{
+    SafeLock lock(userSession->GetLock());
+
+    INT64 token = userSession->_nub.GetToken();
+    int zoneId = userSession->_nub.GetZoneId();
+
+    GetCmdQueue().Add(new ZoneLeave(token, zoneId));
 
     return true;
 }
@@ -145,14 +223,16 @@ static bool C2S_Move(CUserSession* userSession, const CS_P_MOVE& packet)
     SafeLock lock(userSession->GetLock());
 
     //
-    INT64 token = userSession->_nub.token;
-    userSession->_nub.pos_x = posX;
-    userSession->_nub.pos_y = posY;
+    INT64 token = userSession->_nub.GetToken();
+    userSession->_nub.SetPos(posX, posY);
+
+    int zoneId = userSession->_nub.GetZoneId();
 
     //
     SC_P_MOVE sendPacket;
     sendPacket.SetPos(token, posX, posY);
-    userSession->SendPacket(&sendPacket, sizeof(sendPacket));
+    //userSession->SendPacket(&sendPacket, sizeof(sendPacket));
+    GetCmdQueue().Add(new SendBroadcastToAllUser(zoneId, &sendPacket, sizeof(sendPacket)));
 
     return true;
 }
@@ -161,12 +241,6 @@ static bool C2S_Heartbeat(CUserSession* userSession, const CS_P_HEARTBEAT& packe
 {
     userSession->DecHeartbeat();
 
-    SafeLock lock(userSession->GetLock());
-    if (userSession->GetHeartbeat() < 5) {
-        return true;
-    }
-
-    //userSession->Disconnect();
     return true;
 }
 
@@ -178,12 +252,14 @@ static bool C2S_Interaction(CUserSession* userSession, const CS_P_INTERACTION& p
     SafeLock lock(userSession->GetLock());
 
     //
-    INT64 token = userSession->_nub.token;
+    INT64 token = userSession->_nub.GetToken();
+    int zoneId = userSession->_nub.GetZoneId();
 
     //
     SC_P_INTERACTION sendPacket;
     sendPacket.SetInteraction(token, targetToken, interactionType);
-    userSession->SendPacket(&sendPacket, sizeof(sendPacket));
+    ///userSession->SendPacket(&sendPacket, sizeof(sendPacket));
+    GetCmdQueue().Add(new SendBroadcastToAllUser(zoneId, &sendPacket, sizeof(sendPacket)));
 
     return true;
 }

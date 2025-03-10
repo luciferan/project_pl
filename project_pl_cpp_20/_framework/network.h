@@ -1,17 +1,15 @@
-#pragma once
+﻿#pragma once
 #ifndef __NETWORK_H__
 #define __NETWORK_H__
 
-//
-#pragma comment(lib, "ws2_32.lib")
-
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <windows.h>
-#include <process.h>
-#include <wchar.h>
-
 #include "./_common.h"
+//#pragma comment(lib, "ws2_32.lib")
+
+//#include <winsock2.h>
+//#include <ws2tcpip.h>
+//#include <windows.h>
+//#include <process.h>
+//#include <wchar.h>
 
 #include <queue>
 #include <string>
@@ -34,7 +32,7 @@
 //
 using namespace std;
 
-class CConnector;
+class Connector;
 class CNetworkBuffer;
 
 struct HostInfo
@@ -94,15 +92,15 @@ public:
     eResultCode DoUpdate(INT64 biCurrTime);
 
     bool lookup_host(const char* hostname, std::string& hostIP);
-    CConnector* Connect(WCHAR* pwcszIP, const WORD wPort);
-    void DoSend(CConnector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwSendCompleteSize);
-    void DoRecv(CConnector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwRecvCompleteSize);
+    Connector* Connect(WCHAR* pwcszIP, const WORD wPort);
+    bool Disconnect(Connector* pConnector);
+    void Disconnect(SOCKET socket);
 
-    bool Disconnect(CConnector* pSession);
-    bool Disconnect(SOCKET socket);
+    eResultCode Write(Connector* pConnector, char* pSendData, int iSendDataSize);
+    //eResultCode InnerWrite(Connector* pConnector, char* pSendData, int nSendDataSize);
 
-    eResultCode Write(CConnector* pSession, char* pSendData, int iSendDataSize);
-    eResultCode InnerWrite(CConnector* pSession, char* pSendData, int nSendDataSize);
+    void DoSend(Connector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwSendCompleteSize);
+    void DoRecv(Connector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwRecvCompleteSize);
 };
 
 //

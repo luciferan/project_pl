@@ -6,10 +6,22 @@
 history
 # todo
 - 로그 남기는 위치도 변경. 소스파일 위치에 남고 있었네
-- 동기화 mutex로 변경
-- 브로드캐스트 코드를 안넣었었네
 - 패킷처리 함수포인터로 변경
 - 패킷큐 구조 변경. 처리는 커맨드큐로 이동할수 있도록 수정
+- enum 전부 enum class로 변경
+- 네이밍 정리 필요함. 예전 스타일이랑 aa스타일이랑 섞여버림
+
+#20250310
+- winsockapi 충돌이 너무 심해서 프리컴파일드헤더 추가
+- enum 일부를 enum class로 변경
+- connector와 userSession 관계 정리중
+- PostQueuedCompletionStatus 제거
+- ObjectPoolMgrBase를 사용하던 클래스 일부를 ObjectMgrBase로 변경
+- 동기화를 mutex로 변경
+- svr에 CommandUnitQueue 추가
+- svr 패킷 처리방식 CommandUnitQueue로 변경
+- usersession리스트를 zone객체에 넣어서 관리. zone객체 기반으로 broadcast
+- 일부 클래스 네이밍 변경
 
 #20250306
 - 메모리풀 변경

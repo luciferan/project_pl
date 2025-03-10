@@ -1,5 +1,8 @@
-#pragma once
+﻿#pragma once
+#ifndef __DEFAULT_CONFIG_H__
+#define __DEFAULT_CONFIG_H__
 
+#include "./_common.h"
 #include "../_lib/util_common.h"
 #include <string>
 
@@ -32,3 +35,5 @@ public:
     virtual ~CDefaultConfig() {};
 };
 
+//
+#endif //__DEFAULT_CONFIG_H__

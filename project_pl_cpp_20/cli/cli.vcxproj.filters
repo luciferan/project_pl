@@ -37,5 +37,11 @@
     <ClInclude Include="user_session.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
+    <ClInclude Include="user_session_mgr.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="packet_cli.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

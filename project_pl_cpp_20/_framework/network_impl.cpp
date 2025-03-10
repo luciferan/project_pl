@@ -1,5 +1,8 @@
+﻿#include "stdafx.h"
+
 #include "./network.h"
-#include "./Connector.h"
+#include "./connector_mgr.h"
+
 #include "../_lib/Log.h"
 #include "../_lib/util.h"
 
@@ -14,7 +17,7 @@ eResultCode Network::DoUpdate(INT64 biCurrTime)
         //
         wstring wstrReport = {};
         wstrReport.append(L"ConnectorState: ");
-        wstrReport.append(CConnectorMgr::GetInstance().GetStateReport());
+        wstrReport.append(ConnectorMgr::GetInstance().GetReport());
 
         g_PerformanceLog.Write(wstrReport.c_str());
     }

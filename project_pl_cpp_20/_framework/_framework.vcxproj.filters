@@ -26,7 +26,7 @@
     <ClInclude Include="connector.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="defaultConfig.h">
+    <ClInclude Include="default_config.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="network.h">
@@ -47,10 +47,13 @@
     <ClInclude Include="packet_protocol_sc.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="packet_svr.h">
+    <ClInclude Include="character_base.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="character.h">
+    <ClInclude Include="connector_mgr.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -82,7 +85,7 @@
     <ClCompile Include="packet_data_queue.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="packet_cli.h">
+    <ClCompile Include="stdafx.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

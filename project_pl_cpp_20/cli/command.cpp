@@ -1,4 +1,4 @@
-#include "../_lib/operator.h"
+﻿#include "../_lib/command_unit_base.h"
 
 #include <iostream>
 
@@ -7,7 +7,7 @@ using namespace std;
 class TestCommandUnit : public CommandUnitBase
 {
 public:
-    TestCommandUnit() : CommandUnitBase(ECommentUnitPriority::Normal) {}
+    TestCommandUnit() : CommandUnitBase(ECommandUnitPriority::Normal) {}
     ~TestCommandUnit() {}
 
     void Operator()

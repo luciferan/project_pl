@@ -22,16 +22,17 @@
     <ClInclude Include="buffer.h" />
     <ClInclude Include="certifyConvertData.h" />
     <ClInclude Include="certifyData.h" />
-    <ClInclude Include="character.h" />
+    <ClInclude Include="character_base.h" />
     <ClInclude Include="connector.h" />
-    <ClInclude Include="defaultConfig.h" />
+    <ClInclude Include="connector_mgr.h" />
+    <ClInclude Include="default_config.h" />
     <ClInclude Include="network.h" />
     <ClInclude Include="packet.h" />
     <ClInclude Include="packet_data_queue.h" />
     <ClInclude Include="packet_protocol_cs.h" />
     <ClInclude Include="packet_protocol_base.h" />
     <ClInclude Include="packet_protocol_sc.h" />
-    <ClInclude Include="packet_svr.h" />
+    <ClInclude Include="stdafx.h" />
     <ClInclude Include="_common.h" />
   </ItemGroup>
   <ItemGroup>
@@ -44,7 +45,7 @@
     <ClCompile Include="network_impl.cpp" />
     <ClCompile Include="packet.cpp" />
     <ClCompile Include="packet_data_queue.cpp" />
-    <ClCompile Include="packet_cli.h" />
+    <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -121,6 +122,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -136,6 +138,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -151,6 +154,8 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard_C>stdclatest</LanguageStandard_C>
+      <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -166,6 +171,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

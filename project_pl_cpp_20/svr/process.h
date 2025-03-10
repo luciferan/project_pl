@@ -1,8 +1,7 @@
-#pragma once
+﻿#pragma once
 #ifndef __PROCESS_H__
 #define __PROCESS_H__
 
-//
 #include "../_framework/network.h"
 #include "../_framework/packet_data_queue.h"
 #include "../_lib/exception_report.h"
@@ -11,7 +10,7 @@
 #include "../_lib/Log.h"
 //#include "./Config.h"
 
-#include "../_lib/operator.h"
+#include "./command_unit_process.h"
 
 #include <thread>
 #include <mutex>
@@ -19,14 +18,13 @@
 #include <list>
 #include <set>
 
-
 //
 //bool LoadConfig();
 
 //
 class App
 {
-public:
+private:
     list<thread> _threads{};
 
     stop_source _threadStop;
@@ -37,9 +35,16 @@ public:
     CommandUnitQueue _commandQueue;
 
     //
+private:
+    App() {}
+
 public:
-    App();
-    virtual ~App();
+    virtual ~App() {}
+    static App& GetInstance()
+    {
+        static App* pInstance = new App;
+        return *pInstance;
+    }
 
     bool Init();
 
@@ -51,7 +56,11 @@ public:
     unsigned int MonitorThread(stop_token token);
 
     bool SessionRelease(INT64 biCurrTime);
+
+    CommandUnitQueue& GetCmdQueue() { return _commandQueue; }
 };
+
+extern CommandUnitQueue& GetCmdQueue();
 
 //
 #endif //__PROCESS_H__

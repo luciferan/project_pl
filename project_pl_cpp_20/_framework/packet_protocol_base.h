@@ -1,8 +1,8 @@
-#pragma once
+﻿#pragma once
 #ifndef __PACKET_PROTOCOL_BASE_H__
 #define __PACKET_PROTOCOL_BASE_H__
 
-#include <Windows.h>
+#include "./_common.h"
 
 //
 enum class PacketType : unsigned short

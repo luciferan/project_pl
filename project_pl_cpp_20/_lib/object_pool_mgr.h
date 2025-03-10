@@ -97,7 +97,6 @@ public:
         _freeList.push_back(object);
     }
 
-public:
     string GetReportA()
     {
         return format("pool:{}, free:{}", _poolList.size(), _freeList.size());
@@ -106,6 +105,56 @@ public:
     wstring GetReport()
     {
         return format(L"pool:{}, free:{}", _poolList.size(), _freeList.size());
+    }
+};
+
+//
+template <typename T, typename Allocator = allocator<T>>
+class ObjectMgrBase
+{
+protected:
+    Lock _lock;
+
+    ObjectPool<T> _objectPool;
+    list<T*> _usedList{};
+
+public:
+    ObjectMgrBase()
+    {
+    }
+
+    virtual ~ObjectMgrBase()
+    {
+    }
+
+    T* GetFreeObject()
+    {
+        SafeLock lock(_lock);
+        auto obj(_objectPool.GetFreeObjectPtr());
+        _usedList.emplace_back(obj);
+
+        return obj;
+    }
+
+    void SetFreeObject(T* obj)
+    {
+        SafeLock lock(_lock);
+        if (find(_usedList.begin(), _usedList.end(), obj) != _usedList.end()) {
+            _usedList.remove(obj);
+        }
+        _objectPool.SetFreeObjectPtr(obj);
+    }
+
+    string GetReportA()
+    {
+        SafeLock lock(_lock);
+        return format("{}, used:{}", _objectPool.GetReportA(), _usedList.size());
+    }
+
+    wstring GetReport()
+    {
+        SafeLock lock(_lock);
+        return format("L{}, used:{}", _objectPool.GetReportA(), _usedList.size());
     }
 };
 
@@ -175,7 +224,7 @@ public:
         return obj;
     }
 
-    void ReleaseObject(T* obj)
+    void SetFreeObject(T* obj)
     {
         SafeLock lock(_lock);
 
@@ -191,56 +240,11 @@ public:
         return format("pool:{}, used:{}, free:{}", _poolList.size(), _usedList.size(), _freeList.size());
 
     }
+
     wstring GetReport()
     {
         SafeLock lock(_lock);
         return format(L"pool:{}, used:{}, free:{}", _poolList.size(), _usedList.size(), _freeList.size());
-    }
-};
-
-template <typename T, typename Allocator = allocator<T>>
-class ObjectMgrBase
-{
-protected:
-    Lock _lock;
-
-    ObjectPool<T> _objectPool;
-    list<T*> _usedList{};
-
-public:
-    ObjectMgrBase()
-    { 
-    }
-
-    virtual ~ObjectMgrBase()
-    {
-    }
-
-    T* GetFreeObject()
-    {
-        SafeLock lock(_lock);
-        auto obj(_objectPool.GetFreeObjectPtr());
-        _usedList.emplace_back(obj);
-
-        return obj;
-    }
-
-    void SetFreeObject(T* obj)
-    {
-        SafeLock lock(_lock);
-        _objectPool.SetFreeObjectPtr(obj);
-    }
-
-    string GetReportA()
-    {
-        SafeLock lock(_lock);
-        return format("{}, used:{}", _objectPool.GetReportA(), _usedList.size());
-    }
-
-    wstring GetReport()
-    {
-        SafeLock lock(_lock);
-        return format("L{}, used:{}", _objectPool.GetReportA(), _usedList.size());
     }
 };
 

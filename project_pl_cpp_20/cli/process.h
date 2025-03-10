@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef __PROCESS_H__
 #define __PROCESS_H__
 
@@ -6,7 +6,7 @@
 #include "../_framework/network.h"
 #include "../_lib/exception_report.h"
 #include "../_lib/util.h"
-#include "../_lib/operator.h"
+#include "../_lib/command_unit_base.h"
 
 #include <thread>
 #include <atomic>

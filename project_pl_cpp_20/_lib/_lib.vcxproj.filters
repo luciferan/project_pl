@@ -38,7 +38,10 @@
     <ClCompile Include="MySQL.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="operator.cpp">
+    <ClCompile Include="command_unit_base.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="object_pool_mgr.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -73,7 +76,10 @@
     <ClInclude Include="MySQL.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="operator.h">
+    <ClInclude Include="command_unit_base.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="object_pool_mgr.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
   </ItemGroup>

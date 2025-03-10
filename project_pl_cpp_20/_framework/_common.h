@@ -1,4 +1,6 @@
-#pragma once
+﻿#pragma once
+#include "stdafx.h"
+
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
@@ -26,4 +28,5 @@ enum eNetwork
 #define SAFE_DELETE(ptr) { if(ptr) delete ptr; ptr = nullptr; }
 #define SAFE_DELETE_ARRAY(ptr) { if(ptr) delete[] ptr; ptr = nullptr; }
 
+//
 #endif //__COMMON_H__

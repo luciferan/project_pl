@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 #ifndef __PACKET_PROTOCOL_CS_H__
 #define __PACKET_PROTOCOL_CS_H__
 
+#include "./_common.h"
 #include "./packet_protocol_base.h"
 
 enum class PacketTypeC2S : unsigned int
@@ -10,6 +11,7 @@ enum class PacketTypeC2S : unsigned int
     auth,
 
     enter,
+    leave,
     move,
     interaction,
 
@@ -45,6 +47,18 @@ public:
     INT64 token{0};
 
     CS_P_ENTER() : PacketBaseC2S(PacketTypeC2S::enter) {}
+    void SetToken(INT64 token)
+    {
+        this->token = token;
+    }
+};
+
+struct CS_P_LEAVE : public PacketBaseC2S
+{
+public:
+    INT64 token{0};
+
+    CS_P_LEAVE() : PacketBaseC2S(PacketTypeC2S::leave) {}
     void SetToken(INT64 token)
     {
         this->token = token;

@@ -1,6 +1,6 @@
-#pragma once
-#ifndef __OPERATOR_H__
-#define __OPERATOR_H__
+﻿#pragma once
+#ifndef __COMMAND_UNIT_BASE_H__
+#define __COMMAND_UNIT_BASE_H__
 
 #include "./safeLock.h"
 
@@ -9,7 +9,7 @@
 
 using namespace std;
 
-enum class ECommentUnitPriority
+enum class ECommandUnitPriority
 {
     Low = 0,
     Normal,
@@ -20,10 +20,10 @@ enum class ECommentUnitPriority
 class CommandUnitBase
 {
 private:
-    ECommentUnitPriority _priority;
+    ECommandUnitPriority _priority;
 
 public:
-    CommandUnitBase(ECommentUnitPriority priority)
+    CommandUnitBase(ECommandUnitPriority priority)
         : _priority(priority)
     {
     }
@@ -40,7 +40,7 @@ private:
 
 public:
     DynamicCommandUnit(const Operation& operation)
-        : CommandUnitBase(ECommentUnitPriority::Normal)
+        : CommandUnitBase(ECommandUnitPriority::Normal)
         , _operation(operation)
     {
     }
@@ -73,4 +73,6 @@ private:
     void SwapOpList();
     void FireOps();
 };
-#endif //__OPERATOR_H__
+
+//
+#endif //__COMMAND_UNIT_BASE_H__

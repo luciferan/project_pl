@@ -1,4 +1,5 @@
-#include "process.h"
+﻿#include "stdafx.h"
+#include "./process.h"
 
 #include <iostream>
 
@@ -18,7 +19,7 @@ int main(int argc, char* argv[])
     //
     Log("system: svr start.");
 
-    App app;
+    App& app = App::GetInstance();
     if (app.Init()) {
         app.Start();
     } else {

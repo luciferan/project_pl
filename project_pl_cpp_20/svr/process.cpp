@@ -1,11 +1,12 @@
-#include "process.h"
+﻿#include "stdafx.h"
+#include "./process.h"
 
-#include "../_framework/connector.h"
+#include "../_framework/connector_mgr.h"
 #include "../_framework/packet_data_queue.h"
-#include "../_framework/packet_svr.h"
 #include "../_lib/log.h"
 
-#include "./user_session.h"
+#include "./packet_svr.h"
+#include "./user_session_mgr.h"
 //#include "Config.h"
 
 #include <iostream>
@@ -14,18 +15,10 @@
 #include <thread>
 #include <mutex>
 
-//
 WCHAR HOST_ADDRESS[1024 + 1]{L"127.0.0.1"};
 WORD HOST_PORT{20001};
 
-App::App()
-{
-}
-
-App::~App()
-{
-}
-
+//
 bool App::Init()
 {
     _threads.emplace_back(&App::UpdateThread, this, _threadStop.get_token());
@@ -83,10 +76,10 @@ unsigned int App::ProcessThread(stop_token token)
 
     CRecvPacketQueue& RecvPacketQueue{CRecvPacketQueue::GetInstance()};
     CSendPacketQueue& SendPacketQueue{CSendPacketQueue::GetInstance()};
-    CUserSessionMgr& userSessionMgr{CUserSessionMgr::GetInstance()};
+    UserSessionMgr& userSessionMgr{UserSessionMgr::GetInstance()};
 
     //
-    CConnector* pConnector{nullptr};
+    Connector* pConnector{nullptr};
     CUserSession* pUserSession{nullptr};
     CPacketStruct* pPacket{nullptr};
 
@@ -107,7 +100,7 @@ unsigned int App::ProcessThread(stop_token token)
             net.Disconnect(pConnector);
         }
 
-        pConnector = pPacket->pSession;
+        pConnector = pPacket->pConnector;
         if (!pConnector) {
             RecvPacketQueue.ReleasePacketStruct(pPacket); //SAFE_DELETE(pPacket);
             continue;
@@ -120,9 +113,9 @@ unsigned int App::ProcessThread(stop_token token)
         } else {
             sPacketHead* pHeader = (sPacketHead*)pPacket->_pBuffer;
             if ((PacketTypeC2S)pHeader->dwProtocol == PacketTypeC2S::auth) {
-                SafeLock lock(userSessionMgr._Lock);
+                //SafeLock lock(userSessionMgr._Lock);
 
-                if (pUserSession = userSessionMgr.GetFreeUserSession()) {
+                if (pUserSession = userSessionMgr.GetFreeObject()) {
                     pConnector->SetParam((void*)pUserSession);
                     pUserSession->SetConnector(pConnector);
 
@@ -168,7 +161,8 @@ unsigned int App::UpdateThread(stop_token token)
         biCurrTime = GetTimeMilliSec();
 
         //
-        SessionRelease(biCurrTime);
+        //SessionRelease(biCurrTime);
+        UserSessionMgr::GetInstance().DoUpdate(biCurrTime);
 
         //
         this_thread::sleep_for(1ms);
@@ -184,7 +178,7 @@ unsigned int App::MonitorThread(stop_token token)
     _threadSuspended.wait(1);
 
     Network& Net{Network::GetInstance()};
-    CUserSessionMgr& UserSessionMgr{CUserSessionMgr::GetInstance()};
+    UserSessionMgr& userSessionMgr{UserSessionMgr::GetInstance()};
 
     //
     INT64 biCurrTime{0};
@@ -198,15 +192,15 @@ unsigned int App::MonitorThread(stop_token token)
         ////
         //if( biCheckTimer < biCurrTime )
         //{
-        //	CConnector *pConnector = Net.Connect(HOST_ADDRESS, HOST_PORT);
+        //	Connector *pConnector = Net.Connect(HOST_ADDRESS, HOST_PORT);
         //	if( !pConnector )
         //	{
         //		WriteMiniNetLog(L"error: MonitorThread: Connect fail");
         //	}
         //	else
         //	{
-        //		g_Log.Write(L"log: MonitorThread: <%d> Connected. Socket %d", pConnector->GetIndex(), pConnector->GetSocket());
-        //		//WriteMiniNetLog(format(L"log: MonitorThread: <{}> Connected. Socket {}", pConnector->GetIndex(), pConnector->GetSocket()));
+        //		g_Log.Write(L"log: MonitorThread: <%d> Connected. Socket %d", pConnector->GetUID(), pConnector->GetSocket());
+        //		//WriteMiniNetLog(format(L"log: MonitorThread: <{}> Connected. Socket {}", pConnector->GetUID(), pConnector->GetSocket()));
         //		Net.Disconnect(pConnector);
         //	}
 
@@ -224,37 +218,43 @@ unsigned int App::MonitorThread(stop_token token)
 
 bool App::SessionRelease(INT64 biCurrTime)
 {
-    CUserSessionMgr& UserSessionMgr{CUserSessionMgr::GetInstance()};
+    UserSessionMgr& userSessionMgr{UserSessionMgr::GetInstance()};
     std::list<CUserSession*> ReleaseSessionList{};
 
     {
-        SafeLock lock(UserSessionMgr._Lock);
-        for (CUserSession* pSession : UserSessionMgr._UsedUserSessionList) {
-            if (pSession->CheckUpdateTime(biCurrTime)) {
-                continue;
-            }
+        //SafeLock lock(UserSessionMgr._Lock);
+        //for (CUserSession* pSession : UserSessionMgr._UsedUserSessionList) {
+        //    if (pSession->CheckUpdateTime(biCurrTime)) {
+        //        continue;
+        //    }
 
-            pSession->SetUpdateTime(biCurrTime + MILLISEC_A_SEC);
+        //    pSession->SetUpdateTime(biCurrTime + MILLISEC_A_SEC);
 
-            //
-            CConnector* pConnector = pSession->GetConnector();
-            if (!pConnector || !pConnector->GetActive()) {
-                ReleaseSessionList.push_back(pSession);
-                continue;
-            }
+        //    //
+        //    Connector* pConnector = pSession->GetConnector();
+        //    if (!pConnector || !pConnector->GetActive()) {
+        //        ReleaseSessionList.push_back(pSession);
+        //        continue;
+        //    }
 
-            pSession->DoUpdate(biCurrTime);
-        }
+        //    pSession->DoUpdate(biCurrTime);
+        //}
     }
 
     {
-        for (CUserSession* pSession : ReleaseSessionList) {
-            pSession->Release();
-            UserSessionMgr.ReleaseUserSesssion(pSession);
-        }
+        //for (CUserSession* pSession : ReleaseSessionList) {
+        //    pSession->Release();
+        //    UserSessionMgr.ReleaseUserSesssion(pSession);
+        //}
 
-        ReleaseSessionList.clear();
+        //ReleaseSessionList.clear();
     }
 
     return true;
+}
+
+// command unit -----------------------------------------------------------------
+CommandUnitQueue& GetCmdQueue()
+{
+    return App::GetInstance().GetCmdQueue();
 }

@@ -1,11 +1,11 @@
-#include "process.h"
+﻿#include "process.h"
 
-#include "../_framework/connector.h"
+#include "../_framework/connector_mgr.h"
 #include "../_framework/packet_data_queue.h"
-#include "../_framework/packet_cli.h"
 #include "../_lib/log.h"
 
-#include "./user_session.h"
+#include "./packet_cli.h"
+#include "./user_session_mgr.h"
 //#include "Config.h"
 #include "./command.cpp"
 
@@ -66,9 +66,9 @@ int App::ProcessThread(stop_token token)
     //
     Network& net{Network::GetInstance()};
     CRecvPacketQueue& recvPacketQueue{CRecvPacketQueue::GetInstance()};
-    CUserSessionMgr& sessionMgr{CUserSessionMgr::GetInstance()};
+    UserSessionMgr& sessionMgr{UserSessionMgr::GetInstance()};
 
-    CConnector* pConnector{nullptr};
+    Connector* pConnector{nullptr};
     CUserSession* pUserSession{nullptr};
     CPacketStruct* pPacket{nullptr};
 
@@ -89,7 +89,7 @@ int App::ProcessThread(stop_token token)
             net.Disconnect(pConnector);
         }
 
-        pConnector = pPacket->pSession;
+        pConnector = pPacket->pConnector;
         if (!pConnector) {
             recvPacketQueue.ReleasePacketStruct(pPacket);
             continue;
@@ -100,12 +100,12 @@ int App::ProcessThread(stop_token token)
         } else {
             sPacketHead* pHeader = (sPacketHead*)pPacket->_pBuffer;
             if ((PacketTypeS2C)pHeader->dwProtocol == PacketTypeS2C::auth_result) {
-                if (pUserSession = sessionMgr.GetFreeUserSession()) {
-                    pConnector->SetParam((void*)pUserSession);
-                    pUserSession->SetConnector(pConnector);
-                } else {
-                    LogError("UserSessionMgr::GetFreeUserSession fail");
-                }
+                //if (pUserSession = sessionMgr.GetFreeObject()) {
+                //    pConnector->SetParam((void*)pUserSession);
+                //    pUserSession->SetConnector(pConnector);
+                //} else {
+                //    LogError("UserSessionMgr::GetFreeUserSession fail");
+                //}
             } else {
                 LogError("invalid packet");
                 net.Disconnect(pConnector);
@@ -125,20 +125,20 @@ int App::UpdateThread(stop_token token)
     _threadSuspended.wait(1);
 
     Network& net{Network::GetInstance()};
-    CUserSessionMgr& sessionMgr{CUserSessionMgr::GetInstance()};
+    UserSessionMgr& sessionMgr{UserSessionMgr::GetInstance()};
 
     CUserSession* pUerSession{nullptr};
     INT64 uiCurrTime{0};
-    std::list<CUserSession*> sessionList{};
+    list<CUserSession*> sessionList{};
 
     //
     Log(format("log: {}: start", source_location::current().function_name()));
     while (!token.stop_requested()) {
-        sessionMgr.GetUserSessionList(sessionList);
+        //sessionMgr.GetUserSessionList(sessionList);
 
-        for (CUserSession* pSession : sessionList) {
-            pSession->DoUpdate(uiCurrTime);
-        }
+        //for (CUserSession* pSession : sessionList) {
+        //    pSession->DoUpdate(uiCurrTime);
+        //}
 
         _commandQueue.Tick();
     }
@@ -154,7 +154,7 @@ int App::CommandThread(stop_token token)
 
     Network& net = Network::GetInstance();
 
-    CConnector* pConnector{nullptr};
+    Connector* pConnector{nullptr};
     CUserSession* pSession{nullptr};
 
     INT64 biCurrTime{0};
@@ -180,7 +180,7 @@ int App::CommandThread(stop_token token)
             if (pConnector = net.Connect(wszHostIP, wHostPort)) {
                 Log("info: connected");
 
-                if (pSession = CUserSessionMgr::GetInstance().GetFreeUserSession()) {
+                if (pSession = UserSessionMgr::GetInstance().GetFreeObject()) {
                     pConnector->SetParam(pSession);
                     pSession->SetConnector(pConnector);
                 } else {
@@ -196,6 +196,9 @@ int App::CommandThread(stop_token token)
             if (pSession) {
                 pSession->ReqAuth();
             }
+        } else if (0 == strncmp(cmdTokens[0].c_str(), "/enter", cmdTokens[0].length())) {
+        } else if (0 == strncmp(cmdTokens[0].c_str(), "/leave", cmdTokens[0].length())) {
+        } else if (0 == strncmp(cmdTokens[0].c_str(), "/move", cmdTokens[0].length())) {
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/send", cmdTokens[0].length())) {
             if (pSession) {
                 pSession->ReqEcho();

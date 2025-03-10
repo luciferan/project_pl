@@ -1,11 +1,15 @@
-﻿#include "./network.h"
+﻿#include "stdafx.h"
 
-#include "./connector.h"
+#include "./network.h"
+
+#include "./connector_mgr.h"
 #include "./buffer.h"
 #include "./packet_data_queue.h"
-#include "../_lib/util.h"
 #include "../_lib/exception_report.h"
+#include "../_lib/util.h"
 #include "../_lib/log.h"
+
+#include "./connector.h"
 
 #include <iostream>
 #include <string>
@@ -95,8 +99,8 @@ unsigned int Network::AcceptThread(stop_token token)
     _threadSuspended.wait(1);
 
     //
-    CConnectorMgr& ConnectMgr{CConnectorMgr::GetInstance()};
-    CConnector* pConnector{nullptr};
+    ConnectorMgr& ConnectMgr{ConnectorMgr::GetInstance()};
+    Connector* pConnector{nullptr};
 
     HANDLE& hNetworkHandle{_hIOCP};
     NetworkConfig& config{_config};
@@ -159,7 +163,7 @@ unsigned int Network::AcceptThread(stop_token token)
         setsockopt(AcceptSock, IPPROTO_TCP, TCP_NODELAY, (char*)&bSockOpt, sizeof(BOOL));
 
         //
-        pConnector = ConnectMgr.GetFreeConnector(); // new CConnector;
+        pConnector = ConnectMgr.GetFreeObject(); // new Connector;
         if (!pConnector) {
             LogError(format("connector create fail. socket: {}", AcceptSock));
             closesocket(AcceptSock);
@@ -180,7 +184,7 @@ unsigned int Network::AcceptThread(stop_token token)
             int nErrorCode = GetLastError();
             LogError(format("<{}> CreateIoCompletionPort() fail. socket:{}. error:{}", pConnector->GetUID(), AcceptSock, nErrorCode));
             closesocket(AcceptSock);
-            ConnectMgr.ReleaseConnector(pConnector); //SAFE_DELETE(pConnector);
+            ConnectMgr.SetFreeObject(pConnector); //SAFE_DELETE(pConnector);
             continue;
         }
 
@@ -190,7 +194,7 @@ unsigned int Network::AcceptThread(stop_token token)
         if (0 >= pConnector->RecvPrepare()) {
             LogError(format("<{}> RecvPrepare() fail. socket:{}", pConnector->GetUID(), AcceptSock));
             closesocket(AcceptSock);
-            ConnectMgr.ReleaseConnector(pConnector); //SAFE_DELETE(pSession);
+            ConnectMgr.SetFreeObject(pConnector); //SAFE_DELETE(pSession);
             continue;
         }
 
@@ -202,7 +206,7 @@ unsigned int Network::AcceptThread(stop_token token)
             if (WSA_IO_PENDING != nErrorCode) {
                 LogError(format("<{}> WSARecv fail. socket:{}. error:{}", pConnector->GetUID(), AcceptSock, nErrorCode));
                 closesocket(AcceptSock);
-                ConnectMgr.ReleaseConnector(pConnector); //SAFE_DELETE(pSession);
+                ConnectMgr.SetFreeObject(pConnector); //SAFE_DELETE(pSession);
             }
         }
     }
@@ -216,8 +220,8 @@ unsigned int Network::WorkerThread(stop_token token)
     Log(format("log: {} create", source_location::current().function_name()));
     _threadSuspended.wait(1);
 
-    CConnectorMgr& ConnectMgr{CConnectorMgr::GetInstance()};
-    CConnector* pConnector{nullptr};
+    ConnectorMgr& ConnectMgr{ConnectorMgr::GetInstance()};
+    Connector* pConnector{nullptr};
 
     CRecvPacketQueue& RecvPacketQueue{CRecvPacketQueue::GetInstance()};
 
@@ -274,7 +278,7 @@ unsigned int Network::WorkerThread(stop_token token)
         lpOverlappedEx = (OVERLAPPED_EX*)lpOverlapped;
 
         //
-        pConnector = lpOverlappedEx->pSession;
+        pConnector = lpOverlappedEx->pConnector;
         if (!pConnector) {
             Log(format("error: WorkerThread(): Invalid connector {:x}", reinterpret_cast<intptr_t>(pConnector)));
             continue;
@@ -289,7 +293,7 @@ unsigned int Network::WorkerThread(stop_token token)
         // disconnect
         if (0 == dwIOSize) {
             if (pConnector) {
-                Log(FormatW(L"log: WorkerThread() : <%d> Disconnect. IP %s, Socket %d", pConnector->GetIndex(), pConnector->GetDomain(), pConnector->GetSocket()));
+                Log(FormatW(L"log: WorkerThread() : <%d> Disconnect. IP %s, Socket %d", pConnector->GetUID(), pConnector->GetDomain(), pConnector->GetSocket()));
 
                 if (INVALID_SOCKET != pConnector->GetSocket()) {
                     shutdown(pConnector->GetSocket(), SD_BOTH);
@@ -297,16 +301,17 @@ unsigned int Network::WorkerThread(stop_token token)
                 }
 
                 //
-                if (pConnector->GetSendRef() || pConnector->GetRecvRef() || pConnector->GetInnerRef()) {
+                if (pConnector->GetSendRef() || pConnector->GetRecvRef() /*|| pConnector->GetInnerRef()*/) {
                     switch (pNetworkBuffer->GetOperator()) {
-                        case eNetworkBuffer::OP_SEND: pConnector->DecSendRef(); break;
-                        case eNetworkBuffer::OP_RECV: pConnector->DecRecvRef(); break;
-                        case eNetworkBuffer::OP_INNER: pConnector->DecInnerRef(); break;
+                    case eNetworkBuffer::OP_SEND: pConnector->DecSendRef(); break;
+                    case eNetworkBuffer::OP_RECV: pConnector->DecRecvRef(); break;
+                    //case eNetworkBuffer::OP_INNER: pConnector->DecInnerRef(); break;
                     }
                 }
 
-                if (0 >= pConnector->GetSendRef() || 0 >= pConnector->GetRecvRef() || 0 >= pConnector->GetInnerRef()) {
-                    ConnectMgr.ReleaseConnector(pConnector); //SAFE_DELETE(pConnector);
+                if (0 >= pConnector->GetSendRef() || 0 >= pConnector->GetRecvRef() /*|| 0 >= pConnector->GetInnerRef()*/) {
+                    //ConnectMgr.SetFreeObject(pConnector); //SAFE_DELETE(pConnector);
+                    pConnector->TryRelease();
                 }
             } else {
                 Log(format("error: WorkerThread() : unknown connector. IoSize {}, pCurrSockEx {:x}", dwIOSize, reinterpret_cast<intptr_t>(lpOverlappedEx)));
@@ -317,10 +322,10 @@ unsigned int Network::WorkerThread(stop_token token)
 
         //
         switch (pNetworkBuffer->GetOperator()) {
-            case eNetworkBuffer::OP_SEND:
+        case eNetworkBuffer::OP_SEND:
             {
-                //Log(format("debug: WorkerThread() : <{}> SendResult : socket:{}. SendRequestSize {}, SendSize {}", pConnector->GetIndex(), pConnector->GetSocket(), (int)pNetworkBuffer->_nDataSize, dwIOSize));
-                //PacketLog(format(L"debug: WorkerThread(): <{}> SendData:", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwIOSize);
+                //Log(format("debug: WorkerThread() : <{}> SendResult : socket:{}. SendRequestSize {}, SendSize {}", pConnector->GetUID(), pConnector->GetSocket(), (int)pNetworkBuffer->_nDataSize, dwIOSize));
+                //PacketLog(format(L"debug: WorkerThread(): <{}> SendData:", pConnector->GetUID()), pNetworkBuffer->_pBuffer, dwIOSize);
 
                 //// 전송 완료
                 //DWORD dwRemainData = pConnector->SendComplete(dwIOSize);
@@ -332,7 +337,7 @@ unsigned int Network::WorkerThread(stop_token token)
                 //    if (SOCKET_ERROR == iRet) {
                 //        nErrorCode = WSAGetLastError();
                 //        if (WSA_IO_PENDING != nErrorCode) {
-                //            Log(format("error: WorkerThread() : <{}> WSASend() fail. socket:{}. error:{}", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
+                //            Log(format("error: WorkerThread() : <{}> WSASend() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
                 //            Disconnect(pConnector);
                 //        }
                 //    }
@@ -340,15 +345,15 @@ unsigned int Network::WorkerThread(stop_token token)
                 DoSend(pConnector, pNetworkBuffer, dwIOSize);
             }
             break;
-            case eNetworkBuffer::OP_RECV:
+        case eNetworkBuffer::OP_RECV:
             {
-                //Log(format("debug: WorkerThread(): <{}> RecvResult : socket:{}. RecvDataSize {}", pConnector->GetIndex(), pConnector->GetSocket(), dwIOSize));
-                //PacketLog(format(L"debug: WorkerThread(): <{}> RecvData: ", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwIOSize);
+                //Log(format("debug: WorkerThread(): <{}> RecvResult : socket:{}. RecvDataSize {}", pConnector->GetUID(), pConnector->GetSocket(), dwIOSize));
+                //PacketLog(format(L"debug: WorkerThread(): <{}> RecvData: ", pConnector->GetUID()), pNetworkBuffer->_pBuffer, dwIOSize);
 
                 //// 수신 완료
                 //int nResult = pConnector->RecvComplete(dwIOSize);
                 //if (0 > nResult) {
-                //    Log(format("error: WorkerThread(): <{}> CConnector::RecvComplete() fail. socket:{}", pConnector->GetIndex(), pConnector->GetSocket()));
+                //    Log(format("error: WorkerThread(): <{}> Connector::RecvComplete() fail. socket:{}", pConnector->GetUID(), pConnector->GetSocket()));
                 //    Disconnect(pConnector);
                 //} else {
                 //    if (0 < pConnector->RecvPrepare()) {
@@ -357,41 +362,41 @@ unsigned int Network::WorkerThread(stop_token token)
                 //        if (SOCKET_ERROR == iRet) {
                 //            nErrorCode = WSAGetLastError();
                 //            if (WSA_IO_PENDING != nErrorCode) {
-                //                Log(format("error: WorkerThread(): <{}> WSARecv() fail. socket:{}. error:{}", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
+                //                Log(format("error: WorkerThread(): <{}> WSARecv() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
                 //                Disconnect(pConnector);
                 //            }
                 //        }
                 //    } else {
-                //        Log(format("error: WorkerThread(): <{}> CConnector::RecvPrepare() fail. socket:{}", pConnector->GetIndex(), pConnector->GetSocket()));
+                //        Log(format("error: WorkerThread(): <{}> Connector::RecvPrepare() fail. socket:{}", pConnector->GetUID(), pConnector->GetSocket()));
                 //    }
                 //}
                 DoRecv(pConnector, pNetworkBuffer, dwIOSize);
             }
             break;
-            case eNetworkBuffer::OP_INNER:
-            {
-                Log(format("debug: WorkerThread() : <{}> InnerResult : socket:{}. RecvDataSize {}", pConnector->GetIndex(), pConnector->GetSocket(), dwIOSize));
-                PacketLog(format(L"debug: WorkerThread(): <{}> InnerData: ", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwIOSize);
+        //case eNetworkBuffer::OP_INNER:
+        //    {
+        //        Log(format("debug: WorkerThread() : <{}> InnerResult : socket:{}. RecvDataSize {}", pConnector->GetUID(), pConnector->GetSocket(), dwIOSize));
+        //        PacketLog(format(L"debug: WorkerThread(): <{}> InnerData: ", pConnector->GetUID()), pNetworkBuffer->_pBuffer, dwIOSize);
 
-                // 내부 수신처리
-                pConnector->InnerComplete(dwIOSize);
+        //        // 내부 수신처리
+        //        pConnector->InnerComplete(dwIOSize);
 
-                // 내부 전송처리
-                int nRemainData = pConnector->InnerPrepare();
-                if (0 < nRemainData) {
-                    BOOL bRet = PostQueuedCompletionStatus(hNetworkHandle, nRemainData, (ULONG_PTR)pConnector, pConnector->GetInnerOverlapped());
-                    if (0 == bRet) {
-                        nErrorCode = WSAGetLastError();
-                        Log(format("error: WorkerThread(): <{}> PostQueuedCompletionStatus() fail. socket:{}. error:{}", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
-                        Disconnect(pConnector);
-                    }
-                }
-            }
-            break;
-            default:
+        //        // 내부 전송처리
+        //        int nRemainData = pConnector->InnerPrepare();
+        //        if (0 < nRemainData) {
+        //            BOOL bRet = PostQueuedCompletionStatus(hNetworkHandle, nRemainData, (ULONG_PTR)pConnector, pConnector->GetInnerOverlapped());
+        //            if (0 == bRet) {
+        //                nErrorCode = WSAGetLastError();
+        //                Log(format("error: WorkerThread(): <{}> PostQueuedCompletionStatus() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
+        //                Disconnect(pConnector);
+        //            }
+        //        }
+        //    }
+        //    break;
+        default:
             {
                 // 뭐여?
-                LogError(format("WorkerThread(): <{}> Unknown operator: socket:{}. RecvDataSize {}", pConnector->GetIndex(), pConnector->GetSocket(), dwIOSize));
+                LogError(format("WorkerThread(): <{}> Unknown operator: socket:{}. RecvDataSize {}", pConnector->GetUID(), pConnector->GetSocket(), dwIOSize));
                 Disconnect(pConnector);
             }
             break;
@@ -408,8 +413,8 @@ unsigned int Network::UpdateThread(stop_token token)
     _threadSuspended.wait(1);
 
     //
-    CConnectorMgr& ConnectorMgr{CConnectorMgr::GetInstance()};
-    CConnector* pConnector{nullptr};
+    ConnectorMgr& ConnectorMgr{ConnectorMgr::GetInstance()};
+    Connector* pConnector{nullptr};
 
     //
     void* pParam{nullptr};
@@ -417,7 +422,7 @@ unsigned int Network::UpdateThread(stop_token token)
     INT64 biCurrTime{0};
     INT64 biReleaseCheck{GetTimeMilliSec() + (MILLISEC_A_SEC * 30)};
 
-    std::list<CConnector*> ReleaseConnectorList{};
+    std::list<Connector*> ReleaseConnectorList{};
 
     //
     Log(format("log: {}: start", source_location::current().function_name()));
@@ -484,12 +489,12 @@ bool Network::lookup_host(const char* hostname, std::string& hostIP)
         void* ptr{nullptr};
         inet_ntop(result->ai_family, result->ai_addr->sa_data, addrstr, _countof(addrstr));
         switch (result->ai_family) {
-            case AF_INET:
-                ptr = &((sockaddr_in*)result->ai_addr)->sin_addr;
-                break;
-            case AF_INET6:
-                ptr = &((sockaddr_in6*)result->ai_addr)->sin6_addr;
-                break;
+        case AF_INET:
+            ptr = &((sockaddr_in*)result->ai_addr)->sin_addr;
+            break;
+        case AF_INET6:
+            ptr = &((sockaddr_in6*)result->ai_addr)->sin6_addr;
+            break;
         }
         inet_ntop(result->ai_family, ptr, addrstr, 100);
         //SockAddr.sin_addr.s_addr = *(unsigned long*)addrstr;
@@ -502,9 +507,9 @@ bool Network::lookup_host(const char* hostname, std::string& hostIP)
     }
 }
 
-CConnector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
+Connector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
 {
-    CConnector* pConn = CConnectorMgr::GetInstance().GetFreeConnector(); //new CConnector;
+    Connector* pConn = ConnectorMgr::GetInstance().GetFreeObject(); //new Connector;
     if (!pConn) {
         return nullptr;
     }
@@ -549,7 +554,8 @@ CConnector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
     SOCKET sock = pConn->SetSocket(WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED));
     if (INVALID_SOCKET == pConn->GetSocket()) {
         LogError("WSASocket() fail");
-        CConnectorMgr::GetInstance().ReleaseConnector(pConn);
+        //ConnectorMgr::GetInstance().SetFreeObject(pConn);
+        pConn->TryRelease();
         return nullptr;
     } else {
         bSockOpt = TRUE;
@@ -564,7 +570,8 @@ CConnector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
     if (SOCKET_ERROR == nRet) {
         int nErrorCode = WSAGetLastError();
         LogError(format("connect() fail.error:{}", nErrorCode));
-        CConnectorMgr::GetInstance().ReleaseConnector(pConn);
+        //ConnectorMgr::GetInstance().SetFreeObject(pConn);
+        pConn->TryRelease();
         return nullptr;
     }
     memcpy((void*)&pConn->_SockAddr, (void*)&SockAddr, sizeof(SockAddr));
@@ -574,7 +581,8 @@ CConnector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
     //
     HANDLE hRet = CreateIoCompletionPort((HANDLE)sock, _hIOCP, (ULONG_PTR)pConn, 0);
     if (_hIOCP != hRet) {
-        CConnectorMgr::GetInstance().ReleaseConnector(pConn);
+        //ConnectorMgr::GetInstance().SetFreeObject(pConn);
+        pConn->TryRelease();
         return nullptr;
     }
 
@@ -582,7 +590,8 @@ CConnector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
     DWORD dwRecvDataSize = 0;
     if (0 >= pConn->RecvPrepare()) {
         Log(format("<{}> RecvPrepare() fail", pConn->GetUID()));
-        CConnectorMgr::GetInstance().ReleaseConnector(pConn);
+        //ConnectorMgr::GetInstance().SetFreeObject(pConn);
+        pConn->TryRelease();
         return nullptr;
     }
 
@@ -593,7 +602,8 @@ CConnector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
         int nErrorCode = WSAGetLastError();
         if (WSA_IO_PENDING != nErrorCode) {
             Log(format("error: Network::Connect(): WSARecv() fail. {}, Socket {}. error:{}", pConn->GetUID(), pConn->GetSocket(), nErrorCode));
-            CConnectorMgr::GetInstance().ReleaseConnector(pConn);
+            //ConnectorMgr::GetInstance().SetFreeObject(pConn);
+            pConn->TryRelease();
             return nullptr;
         }
     }
@@ -602,7 +612,7 @@ CConnector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
     return pConn;
 }
 
-bool Network::Disconnect(CConnector* pConnector)
+bool Network::Disconnect(Connector* pConnector)
 {
     if (!pConnector) {
         LogError(format("Invalid session object {:x}", reinterpret_cast<intptr_t>(pConnector)));
@@ -618,7 +628,6 @@ bool Network::Disconnect(CConnector* pConnector)
     if (INVALID_SOCKET != pConnector->GetSocket()) {
         shutdown(pConnector->GetSocket(), SD_BOTH);
         closesocket(pConnector->GetSocket());
-
         pConnector->SetSocket(INVALID_SOCKET);
     }
 
@@ -631,24 +640,18 @@ bool Network::Disconnect(CConnector* pConnector)
     return true;
 }
 
-bool Network::Disconnect(SOCKET socket)
+void Network::Disconnect(SOCKET socket)
 {
-    if (INVALID_SOCKET == socket) {
-        return false;
+    if (INVALID_SOCKET != socket) {
+        shutdown(socket, SD_BOTH);
+        closesocket(socket);
     }
-
-    //
-    shutdown(socket, SD_BOTH);
-    closesocket(socket);
-
-    //
-    return true;
 }
 
-eResultCode Network::Write(CConnector* pConnector, char* pSendData, int iSendDataSize)
+eResultCode Network::Write(Connector* pConnector, char* pSendData, int iSendDataSize)
 {
     if (!pConnector) {
-        //LogError(format("Invalid session object %08X %d", pConnector, (pConnector ? pConnector->GetUID() : -1)));
+        LogError(format("Invalid session object {:x} {}", reinterpret_cast<intptr_t>(pConnector), (pConnector ? pConnector->GetUID() : -1)));
         return eResultCode::RESULT_FAIL;
     }
     if (INVALID_SOCKET == pConnector->GetSocket()) {
@@ -687,44 +690,44 @@ eResultCode Network::Write(CConnector* pConnector, char* pSendData, int iSendDat
     return eResultCode::RESULT_SUCC;
 }
 
-eResultCode Network::InnerWrite(CConnector* pConnector, char* pSendData, int nSendDataSize)
+//eResultCode Network::InnerWrite(Connector* pConnector, char* pSendData, int nSendDataSize)
+//{
+//    if (!pConnector) {
+//        LogError(format("Invalid session object {:x} {}", reinterpret_cast<intptr_t>(pConnector), (pConnector ? pConnector->GetUID() : -1)));
+//        eResultCode::RESULT_FAIL;
+//    }
+//    if (INVALID_SOCKET == pConnector->GetSocket()) {
+//        LogError(format("<{}> Invalid socket {}", pConnector->GetUID(), pConnector->GetSocket()));
+//        eResultCode::RESULT_FAIL;
+//    }
+//
+//    // 데이터 셋팅
+//    pConnector->AddInnerQueue(pSendData, nSendDataSize);
+//
+//    //
+//    if (0 >= pConnector->GetInnerRef()) {
+//        // 지금처리
+//        if (0 > pConnector->InnerPrepare()) {
+//            LogError(format("<{}> InnerPrepare() fail", pConnector->GetUID()));
+//            return eResultCode::RESULT_FAIL;
+//        }
+//
+//        BOOL bRet = PostQueuedCompletionStatus(_hIOCP, nSendDataSize, (ULONG_PTR)pConnector, pConnector->GetInnerOverlapped());
+//        if (0 == bRet) {
+//            int nErrorCode = GetLastError();
+//            LogError(format("<{}> PostQueuedCompletionStatus() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
+//            return eResultCode::RESULT_FAIL;
+//        }
+//    }
+//
+//    //
+//    return eResultCode::RESULT_SUCC;
+//}
+
+void Network::DoSend(Connector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwSendCompleteSize)
 {
-    if (!pConnector) {
-        //LogError(format("Invalid session object {:x} {}", reinterpret_cast<intptr_t>(pConnector), (pConnector ? pConnector->GetUID() : -1)));
-        eResultCode::RESULT_FAIL;
-    }
-    if (INVALID_SOCKET == pConnector->GetSocket()) {
-        LogError(format("<{}> Invalid socket {}", pConnector->GetUID(), pConnector->GetSocket()));
-        eResultCode::RESULT_FAIL;
-    }
-
-    // 데이터 셋팅
-    pConnector->AddInnerQueue(pSendData, nSendDataSize);
-
-    //
-    if (0 >= pConnector->GetInnerRef()) {
-        // 지금처리
-        if (0 > pConnector->InnerPrepare()) {
-            LogError(format("<{}> InnerPrepare() fail", pConnector->GetUID()));
-            return eResultCode::RESULT_FAIL;
-        }
-
-        BOOL bRet = PostQueuedCompletionStatus(_hIOCP, nSendDataSize, (ULONG_PTR)pConnector, pConnector->GetInnerOverlapped());
-        if (0 == bRet) {
-            int nErrorCode = GetLastError();
-            LogError(format("<{}> PostQueuedCompletionStatus() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
-            return eResultCode::RESULT_FAIL;
-        }
-    }
-
-    //
-    return eResultCode::RESULT_SUCC;
-}
-
-void Network::DoSend(CConnector *pConnector, CNetworkBuffer *pNetworkBuffer, DWORD dwSendCompleteSize)
-{
-    Log(format("debug: WorkerThread() : <{}> SendResult : socket:{}. SendRequestSize {}, SendSize {}", pConnector->GetIndex(), pConnector->GetSocket(), (int)pNetworkBuffer->_nDataSize, dwSendCompleteSize));
-    PacketLog(format(L"debug: WorkerThread(): <{}> SendData:", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwSendCompleteSize);
+    Log(format("debug: WorkerThread() : <{}> SendResult : socket:{}. SendRequestSize {}, SendSize {}", pConnector->GetUID(), pConnector->GetSocket(), (int)pNetworkBuffer->_nDataSize, dwSendCompleteSize));
+    PacketLog(format(L"debug: WorkerThread(): <{}> SendData:", pConnector->GetUID()), pNetworkBuffer->_pBuffer, dwSendCompleteSize);
 
     DWORD dwSendDataSize{0};
     int nRemainData{pConnector->SendComplete(dwSendCompleteSize)};
@@ -736,17 +739,17 @@ void Network::DoSend(CConnector *pConnector, CNetworkBuffer *pNetworkBuffer, DWO
         if (SOCKET_ERROR == iRet) {
             int nErrorCode = WSAGetLastError();
             if (WSA_IO_PENDING != nErrorCode) {
-                Log(format("error: WorkerThread() : <{}> WSASend() fail. socket:{}. error:{}", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
+                Log(format("error: WorkerThread() : <{}> WSASend() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
                 Disconnect(pConnector);
             }
         }
     }
 }
 
-void Network::DoRecv(CConnector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwRecvCompleteSize)
+void Network::DoRecv(Connector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwRecvCompleteSize)
 {
-    Log(format("debug: WorkerThread(): <{}> RecvResult : socket:{}. RecvDataSize {}", pConnector->GetIndex(), pConnector->GetSocket(), dwRecvCompleteSize));
-    PacketLog(format(L"debug: WorkerThread(): <{}> RecvData: ", pConnector->GetIndex()), pNetworkBuffer->_pBuffer, dwRecvCompleteSize);
+    Log(format("debug: WorkerThread(): <{}> RecvResult : socket:{}. RecvDataSize {}", pConnector->GetUID(), pConnector->GetSocket(), dwRecvCompleteSize));
+    PacketLog(format(L"debug: WorkerThread(): <{}> RecvData: ", pConnector->GetUID()), pNetworkBuffer->_pBuffer, dwRecvCompleteSize);
 
     DWORD dwRecvDataSize{0};
     DWORD dwFlags{0};
@@ -754,7 +757,7 @@ void Network::DoRecv(CConnector* pConnector, CNetworkBuffer* pNetworkBuffer, DWO
     // 수신 완료
     int nResult = pConnector->RecvComplete(dwRecvCompleteSize);
     if (0 > nResult) {
-        Log(format("error: WorkerThread(): <{}> CConnector::RecvComplete() fail. socket:{}", pConnector->GetIndex(), pConnector->GetSocket()));
+        Log(format("error: WorkerThread(): <{}> Connector::RecvComplete() fail. socket:{}", pConnector->GetUID(), pConnector->GetSocket()));
         Disconnect(pConnector);
     } else {
         if (0 < pConnector->RecvPrepare()) {
@@ -763,12 +766,12 @@ void Network::DoRecv(CConnector* pConnector, CNetworkBuffer* pNetworkBuffer, DWO
             if (SOCKET_ERROR == iRet) {
                 int nErrorCode = WSAGetLastError();
                 if (WSA_IO_PENDING != nErrorCode) {
-                    Log(format("error: WorkerThread(): <{}> WSARecv() fail. socket:{}. error:{}", pConnector->GetIndex(), pConnector->GetSocket(), nErrorCode));
+                    Log(format("error: WorkerThread(): <{}> WSARecv() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
                     Disconnect(pConnector);
                 }
             }
         } else {
-            Log(format("error: WorkerThread(): <{}> CConnector::RecvPrepare() fail. socket:{}", pConnector->GetIndex(), pConnector->GetSocket()));
+            Log(format("error: WorkerThread(): <{}> Connector::RecvPrepare() fail. socket:{}", pConnector->GetUID(), pConnector->GetSocket()));
         }
     }
 }

@@ -1,4 +1,5 @@
-#include "DefaultConfig.h"
+﻿#include "stdafx.h"
+#include "./default_config.h"
 
 //
 CIniFile::CIniFile()

@@ -1,17 +1,19 @@
-#pragma once
+﻿#pragma once
 #ifndef __BUFFER_H__
 #define __BUFFER_H__
 
+#include "./_common.h"
 //
-#include <winsock2.h>
-#include <WS2tcpip.h>
+//#include <winsock2.h>
+//#include <WS2tcpip.h>
+//#include <Windows.h>
 
 #include "../_lib/safeLock.h"
 
 #include <string>
 
 //
-class CConnector;
+class Connector;
 static const int MAX_PACKET_BUFFER_SIZE = 1024 * 10;
 
 //
@@ -70,7 +72,7 @@ class CCircleBuffer
     : public CBuffer
 {
 private:
-    Lock _cs;
+    Lock _lock;
 
 public:
     CCircleBuffer() {}
@@ -78,7 +80,7 @@ public:
 
     ULONG Write(char IN* pSrc, ULONG IN nLen)
     {
-        SafeLock lock(_cs);
+        SafeLock lock(_lock);
 
         ULONG empty = _nBufferSize - _nDataSize;
         if (_nDataSize > _nBufferSize || empty < nLen)
@@ -105,7 +107,7 @@ public:
 
     ULONG Read(char OUT* pDest, ULONG IN nReqSize)
     {
-        SafeLock lock(_cs);
+        SafeLock lock(_lock);
 
         if (_nDataSize < nReqSize) {
             return -1;
@@ -127,7 +129,7 @@ public:
 
     ULONG Erase(ULONG IN releaseSize)
     {
-        SafeLock lock(_cs);
+        SafeLock lock(_lock);
 
         if (_nDataSize < releaseSize) {
             return -1;
@@ -147,11 +149,11 @@ public:
 };
 
 //
-enum eNetworkBuffer
+enum class eNetworkBuffer : unsigned char
 {
     OP_SEND = 1,
     OP_RECV = 2,
-    OP_INNER = 3,
+    //OP_INNER = 3,
 };
 
 class CNetworkBuffer
@@ -160,8 +162,7 @@ class CNetworkBuffer
 public:
     WSABUF _WSABuffer{0,};
     eNetworkBuffer _eOperator{eNetworkBuffer::OP_SEND};
-
-    CConnector* _pSession{nullptr};
+    Connector* _pConnector{nullptr};
 
     //
 public:
@@ -171,7 +172,7 @@ public:
     WSABUF& GetWSABuffer() { return _WSABuffer; }
     eNetworkBuffer GetOperator() { return _eOperator; }
 
-    int SetSendData(CConnector* pSession, char* pData, UINT32 nDataSize)
+    int SetSendData(Connector* pConnector, char* pData, UINT32 nDataSize)
     {
         if (!pData || _nBufferSize < (ULONG)nDataSize) {
             return -1;
@@ -183,40 +184,40 @@ public:
         _WSABuffer.buf = _pBuffer;
         _WSABuffer.len = _nDataSize;
         _eOperator = eNetworkBuffer::OP_SEND;
-        _pSession = pSession;
+        _pConnector = pConnector;
 
         return _nDataSize;
     }
 
-    int SetRecvData(CConnector* pSession)
+    int SetRecvData(Connector* pConnector)
     {
         _nDataSize = 0;
 
         _WSABuffer.buf = _pBuffer;
         _WSABuffer.len = _nBufferSize;
         _eOperator = eNetworkBuffer::OP_RECV;
-        _pSession = pSession;
+        _pConnector = pConnector;
 
         return _nBufferSize;
     }
 
-    int SetInnerData(CConnector* pSession, char* pData, UINT32 nDataSize)
-    {
-        if (!pData || _nBufferSize < (ULONG)nDataSize) {
-            return -1;
-        }
+    //int SetInnerData(Connector* pConnector, char* pData, UINT32 nDataSize)
+    //{
+    //    if (!pData || _nBufferSize < (ULONG)nDataSize) {
+    //        return -1;
+    //    }
 
-        _eOperator = eNetworkBuffer::OP_INNER;
+    //    _eOperator = eNetworkBuffer::OP_INNER;
 
-        memcpy_s(_pBuffer, _nBufferSize, pData, nDataSize);
-        _nDataSize = nDataSize;
+    //    memcpy_s(_pBuffer, _nBufferSize, pData, nDataSize);
+    //    _nDataSize = nDataSize;
 
-        _pSession = pSession;
-        _WSABuffer.buf = _pBuffer;
-        _WSABuffer.len = _nDataSize;
+    //    _pConnector = pConnector;
+    //    _WSABuffer.buf = _pBuffer;
+    //    _WSABuffer.len = _nDataSize;
 
-        return _nDataSize;
-    }
+    //    return _nDataSize;
+    //}
 };
 
 //

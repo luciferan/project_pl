@@ -1,3 +1,5 @@
+﻿#include "stdafx.h"
+
 #include "packet.h"
 #include "buffer.h"
 

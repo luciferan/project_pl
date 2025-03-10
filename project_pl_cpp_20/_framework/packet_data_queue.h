@@ -1,15 +1,16 @@
-#pragma once
+﻿#pragma once
 #ifndef __PACKET_DATA_QUEUE_H__
 #define __PACKET_DATA_QUEUE_H__
 
-//
+#include "./_common.h"
+
+#include "../_lib/SafeLock.h"
+#include "Buffer.h"
+//#include "../_framework/Packet.h"
+
 #include <unordered_map>
 #include <list>
 #include <queue>
-
-#include "Buffer.h"
-#include "../_lib/SafeLock.h"
-//#include "../_framework/Packet.h"
 
 using namespace std;
 
@@ -24,7 +25,7 @@ class CPacketStruct
     : public CBuffer
 {
 public:
-    CConnector* pSession{nullptr};
+    Connector* pConnector{nullptr};
 
 public:
     CPacketStruct() {};

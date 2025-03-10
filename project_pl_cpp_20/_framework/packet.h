@@ -1,10 +1,11 @@
-#pragma once
+﻿#pragma once
 #ifndef __PACKET_H__
 #define __PACKET_H__
 
-//
+#include "./_common.h"
+
 //#include "packet_Protocol_base.h"
-#include "buffer.h"
+#include "./buffer.h"
 
 //
 static const DWORD PACKET_CHECK_HEAD_KEY{0x00000000};

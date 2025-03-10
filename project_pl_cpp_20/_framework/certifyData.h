@@ -1,9 +1,9 @@
-#pragma once
+﻿#pragma once
 #ifndef __CERTIFYDATA_H__
 #define __CERTIFYDATA_H__
 
-//
-#include <Windows.h>
+#include "./_common.h"
+//#include <Windows.h>
 #include <time.h>
 #include <vector>
 

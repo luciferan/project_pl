@@ -114,6 +114,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <LanguageStandard_C>stdclatest</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -141,7 +142,8 @@
     <ClCompile Include="exception_report.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="MySQL.cpp" />
-    <ClCompile Include="operator.cpp" />
+    <ClCompile Include="object_pool_mgr.cpp" />
+    <ClCompile Include="command_unit_base.cpp" />
     <ClCompile Include="safeLock.cpp" />
     <ClCompile Include="util_common.cpp" />
     <ClCompile Include="util_file.cpp" />
@@ -153,7 +155,8 @@
     <ClInclude Include="exception_report.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="MySQL.h" />
-    <ClInclude Include="operator.h" />
+    <ClInclude Include="object_pool_mgr.h" />
+    <ClInclude Include="command_unit_base.h" />
     <ClInclude Include="safeLock.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="util_common.h" />

@@ -26,12 +26,42 @@
     <ClCompile Include="user_session.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="zone.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="user_session_mgr.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="command_unit_process.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="process.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="user_session.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="zone.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="user_session_mgr.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="zone_mgr.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="command_unit_process.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="packet_svr.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
   </ItemGroup>

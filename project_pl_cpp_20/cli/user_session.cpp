@@ -1,4 +1,4 @@
-#include "../_framework/connector.h"
+ï»¿#include "../_framework/connector.h"
 #include "../_framework/packet.h"
 #include "../_lib/util.h"
 
@@ -97,7 +97,7 @@ eResultCode CUserSession::ReqAuth()
 eResultCode CUserSession::ReqEnter()
 {
     CS_P_ENTER sendPacket;
-    sendPacket.SetToken(_nub.token);
+    sendPacket.SetToken(_nub.GetToken());
     return SendPacket(&sendPacket, sizeof(sendPacket));
 }
 
@@ -117,9 +117,9 @@ eResultCode CUserSession::ReqInteraction(int targetId, int type)
 
 eResultCode CUserSession::ReqEcho()
 {
-    string echoMsg{format("hello. my id {}.",_nub.token)};
+    string echoMsg{format("hello. my id {}.",_nub.GetToken())};
     CS_P_ECHO sendPacket;
-    sendPacket.SetData(echoMsg.c_str(), echoMsg.length());
+    sendPacket.SetData(echoMsg.c_str(), (int)echoMsg.length());
     return SendPacket(&sendPacket, sizeof(sendPacket));
 }
 
@@ -131,31 +131,31 @@ eResultCode CUserSession::RepHeartBeat()
 
 bool S2C_AuthResult(CUserSession* userSession, const SC_P_AUTH_RESULT& packet)
 {
-    userSession->_nub.id = packet.id;
-    userSession->_nub.token = packet.token;
+    userSession->_nub.SetId(packet.id);
+    userSession->_nub.SetToken(packet.token);
     return true;
 }
 
 bool S2C_Enter(CUserSession* userSession, const SC_P_ENTER& packet)
 {
-    if (packet.token == userSession->_nub.token) {
-        userSession->_nub.pos_x = packet.x;
-        userSession->_nub.pos_y = packet.y;
-        cout << format("ÀÔÀå. ÇöÀçÀ§Ä¡: {}, {}", userSession->_nub.pos_x, userSession->_nub.pos_y) << endl;
+    if (packet.token == userSession->_nub.GetToken()) {
+        userSession->_nub.SetPos(packet.x, packet.y);
+        cout << format("ìž…ìž¥. í˜„ìž¬ìœ„ì¹˜: {}, {}", userSession->_nub.GetPosX(), userSession->_nub.GetPosY()) << endl;
     } else {
-        cout << format("{} ÀÔÀå. À§Ä¡: {}, {}", packet.token, packet.x, packet.y) << endl;
+        cout << format("{} ìž…ìž¥. ìœ„ì¹˜: {}, {}", packet.token, packet.x, packet.y) << endl;
     }
+
+    auto [x, y] = userSession->_nub.GetPos();
     return true;
 }
 
 bool S2C_Move(CUserSession* userSession, const SC_P_MOVE& packet)
 {
-    if (packet.token == userSession->_nub.token) {
-        userSession->_nub.pos_x = packet.x;
-        userSession->_nub.pos_y = packet.y;
-        cout << format("ÀÌµ¿: {}, {}", userSession->_nub.pos_x, userSession->_nub.pos_y) << endl;
+    if (packet.token == userSession->_nub.GetToken()) {
+        userSession->_nub.SetPos(packet.x, packet.y);
+        cout << format("ì´ë™: {}, {}", userSession->_nub.GetPosX(), userSession->_nub.GetPosY()) << endl;
     } else {
-        cout << format("{}°¡ ÀÌµ¿: {}, {}", packet.token, packet.x, packet.y) << endl;
+        cout << format("{}ê°€ ì´ë™: {}, {}", packet.token, packet.x, packet.y) << endl;
 
     }
     return true;
@@ -163,12 +163,12 @@ bool S2C_Move(CUserSession* userSession, const SC_P_MOVE& packet)
 
 bool S2C_Interaction(CUserSession* userSession, const SC_P_INTERACTION& packet)
 {
-    if( packet.token == userSession->_nub.token ){
-        cout << "´ç½ÅÀº " << packet.targetToken << "¿¡°Ô {" << packet.type << "} Çàµ¿À» ÇÕ´Ï´Ù." << endl;
-    } else if( packet.targetToken == userSession->_nub.token) {
-        cout << packet.targetToken << "ÀÌ ´ç½Å¿¡°Ô {" << packet.type << "} Çàµ¿À» ÇÕ´Ï´Ù." << endl;
+    if( packet.token == userSession->_nub.GetToken() ){
+        cout << "ë‹¹ì‹ ì€ " << packet.targetToken << "ì—ê²Œ {" << packet.type << "} í–‰ë™ì„ í•©ë‹ˆë‹¤." << endl;
+    } else if( packet.targetToken == userSession->_nub.GetToken()) {
+        cout << packet.targetToken << "ì´ ë‹¹ì‹ ì—ê²Œ {" << packet.type << "} í–‰ë™ì„ í•©ë‹ˆë‹¤." << endl;
     } else {
-        cout << packet.targetToken << "°¡ " << packet.targetToken << "¿¡°Ô {" << packet.type << "} Çàµ¿À» ÇÕ´Ï´Ù." << endl;
+        cout << packet.targetToken << "ê°€ " << packet.targetToken << "ì—ê²Œ {" << packet.type << "} í–‰ë™ì„ í•©ë‹ˆë‹¤." << endl;
     }
 
     return true;
@@ -186,6 +186,6 @@ bool S2C_Heartbeat(CUserSession* userSession, const SC_P_HEARTBEAT& packet)
 #include <iostream>
 bool S2C_Echo(CUserSession* userSession, const SC_P_ECHO& packet)
 {
-    cout << "¿¡ÄÚ: " << packet.echoData << endl;
+    cout << "ì—ì½”: " << packet.echoData << endl;
     return true;
 }

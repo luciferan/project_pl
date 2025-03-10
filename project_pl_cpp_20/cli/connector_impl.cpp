@@ -1,9 +1,9 @@
-#include "../_framework/Connector.h"
-#include "../_framework/Packet.h"
+﻿#include "../_framework/connector.h"
+#include "./packet_cli.h"
 #include "../_lib/util.h"
 
 //
-int CConnector::DataParsing()
+int Connector::DataParser()
 {
     int nPacketLength = 0;
 
@@ -17,7 +17,7 @@ int CConnector::DataParsing()
     return nPacketLength;
 }
 
-bool CConnector::DoUpdate(INT64 biCurrTime)
+bool Connector::DoUpdate(INT64 biCurrTime)
 {
     if (_biUpdateTimer < biCurrTime) {
         _biUpdateTimer = biCurrTime + MILLISEC_A_SEC;
@@ -27,7 +27,7 @@ bool CConnector::DoUpdate(INT64 biCurrTime)
     }
 }
 
-bool CConnector::CheckHeartbeat(INT64 biCurrTime)
+bool Connector::CheckHeartbeat(INT64 biCurrTime)
 {
     if (GetActive() && _biHeartbeatTimer < biCurrTime) {
         _biHeartbeatTimer = biCurrTime + (MILLISEC_A_SEC * 30);
@@ -37,19 +37,19 @@ bool CConnector::CheckHeartbeat(INT64 biCurrTime)
     }
 }
 
-wstring CConnector::GetStateReport()
-{
-    wstring wstrReport{};
-
-    if (GetActive()) {
-        wstrReport.append(FormatW(L"[%d] connected: %d,", GetUID(), GetSocket()));
-    } else {
-        wstrReport.append(FormatW(L"[%d] disconnected: ", GetUID()));
-    }
-
-    wstrReport.append(FormatW(L"sq:%d,", _SendQueue.size()));
-    wstrReport.append(FormatW(L"rb:(%d/%d),", _RecvDataBuffer.GetDataSize(), _RecvDataBuffer.GetBufferSize()));
-    wstrReport.append(FormatW(L"iq:%d", _InnerQueue.size()));
-
-    return wstrReport;
-}
+//wstring Connector::GetReport()
+//{
+//    wstring wstrReport{};
+//
+//    if (GetActive()) {
+//        wstrReport.append(FormatW(L"[%d] connected: %d,", GetUID(), GetSocket()));
+//    } else {
+//        wstrReport.append(FormatW(L"[%d] disconnected: ", GetUID()));
+//    }
+//
+//    wstrReport.append(FormatW(L"sq:%d,", _SendQueue.size()));
+//    wstrReport.append(FormatW(L"rb:(%d/%d),", _RecvDataBuffer.GetDataSize(), _RecvDataBuffer.GetBufferSize()));
+//    //wstrReport.append(FormatW(L"iq:%d", _InnerQueue.size()));
+//
+//    return wstrReport;
+//}

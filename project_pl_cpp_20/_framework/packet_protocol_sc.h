@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 #ifndef __PACKET_PROTOCOL_SC_H__
 #define __PACKET_PROTOCOL_SC_H__
 
+#include "./_common.h"
 #include "./packet_protocol_base.h"
 
 enum class PacketTypeS2C : unsigned int
@@ -10,6 +11,7 @@ enum class PacketTypeS2C : unsigned int
     auth_result,
 
     enter,
+    leave,
     move,
     interaction,
 
@@ -53,6 +55,18 @@ public:
         this->token = token;
         this->x = x;
         this->y = y;
+    }
+};
+
+struct SC_P_LEAVE : public PacketBaseS2C
+{
+public:
+    INT64 token{0};
+
+    SC_P_LEAVE() : PacketBaseS2C(PacketTypeS2C::leave) {}
+    void SetToken(INT64 token)
+    {
+        this->token = token;
     }
 };
 

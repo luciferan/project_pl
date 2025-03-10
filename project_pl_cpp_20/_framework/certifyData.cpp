@@ -1,3 +1,4 @@
+﻿#include "stdafx.h"
 #include "CertifyData.h"
 #include "CertifyConvertData.h"
 
