@@ -33,6 +33,7 @@ public:
 
     void OnRegistCharacter(Character* character);
     void OnUnregistCharacter(Character* character);
+    void OnUnregistCharacter(INT64 token);
 
     size_t GetCharacterCount() { return _characterMap.size(); }
     size_t GetCharacterDbList(list<CharacterDbData>& characterDbList, INT64 exceptToken = 0);

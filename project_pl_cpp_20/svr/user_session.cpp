@@ -32,7 +32,7 @@ void UserSession::Release()
         INT64 token = _nub.GetToken();
         int zoneId = _nub.GetZoneId();
 
-        GetCmdQueue().Add(new ZoneLeave(token, zoneId));
+        GetCmdQueue().Add(new LeaveCharacter(token, zoneId));
     }
 
     //
@@ -84,19 +84,19 @@ void UserSession::DoUpdate(SafeLock& mgrLock, INT64 biCurrTime)
             return;
         }
 
-        //if (_biHeartbeatTimer < biCurrTime && _pConnector->GetActive()) {
-        //    _biHeartbeatTimer = biCurrTime + (MILLISEC_A_SEC * 10);
-        //    if (5 < IncHeartbeat()) {
-        //        _biHeartbeatTimer = INT64_MAX;
+        if (_biHeartbeatTimer < biCurrTime && _pConnector->GetActive()) {
+            _biHeartbeatTimer = biCurrTime + (MILLISEC_A_SEC * 15);
+            if (4 < IncHeartbeat()) {
+                _biHeartbeatTimer = INT64_MAX;
 
-        //        Log(format("heartbeat count over 5. disconnect. token {}", GetToken()));
-        //        _pConnector->TryRelease();
-        //        return;
-        //    }
+                Log(format("heartbeat count over 5. disconnect. token {}", GetToken()));
+                _pConnector->TryRelease();
+                return;
+            }
 
-        //    SC_P_HEARTBEAT sendPacket;
-        //    SendPacket(&sendPacket, sizeof(sendPacket));
-        //}
+            SC_P_HEARTBEAT sendPacket;
+            SendPacket(&sendPacket, sizeof(sendPacket));
+        }
     }
 }
 
@@ -139,7 +139,7 @@ static bool C2S_Auth(UserSession* userSession, const CS_P_AUTH& packet)
 
 static bool C2S_Enter(UserSession* userSession, const CS_P_ENTER& packet)
 {
-    int zoneId = 0;
+    int zoneId = 1;
     int posX = rand() % 1000;
     int posY = rand() % 1000;
 
@@ -149,7 +149,7 @@ static bool C2S_Enter(UserSession* userSession, const CS_P_ENTER& packet)
     INT64 token = userSession->_nub.GetToken();
     userSession->_nub.SetPos(zoneId, posX, posY);
 
-    GetCmdQueue().Add(new ZoneEnter(token, zoneId, posX, posY));
+    GetCmdQueue().Add(new EnterCharacter(token, zoneId, posX, posY));
 
     return true;
 }
@@ -161,7 +161,7 @@ static bool C2S_LEAVE(UserSession* userSession, const CS_P_LEAVE& packet)
     INT64 token = userSession->_nub.GetToken();
     int zoneId = userSession->_nub.GetZoneId();
 
-    GetCmdQueue().Add(new ZoneLeave(token, zoneId));
+    GetCmdQueue().Add(new LeaveCharacter(token, zoneId));
 
     return true;
 }

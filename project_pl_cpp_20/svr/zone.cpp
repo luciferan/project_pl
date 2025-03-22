@@ -20,6 +20,15 @@ void Zone::OnUnregistCharacter(Character* character)
     }
 }
 
+void Zone::OnUnregistCharacter(INT64 token)
+{
+    SafeLock lock(_lock);
+    auto it = _characterMap.find(token);
+    if (it != _characterMap.end()) {
+        _characterMap.erase(it);
+    }
+}
+
 void Zone::PacketBroadcast(char* sendBuffer, DWORD sendBufferSize)
 {
     SafeLock lock(_lock);

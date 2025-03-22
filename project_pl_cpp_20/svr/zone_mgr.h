@@ -44,10 +44,14 @@ public:
         SafeLock lock(_lock);
         if (auto it = _zoneMap.find(zoneId); it != _zoneMap.end()) {
             it->second->OnUnregistCharacter(character);
-            
-            if (0 >= it->second->GetCharacterCount()) {
-                // remove zone
-            }
+        }
+    }
+
+    void LeaveCharacter(int zoneId, INT64 token)
+    {
+        SafeLock lock(_lock);
+        if (auto it = _zoneMap.find(zoneId); it != _zoneMap.end()) {
+            it->second->OnUnregistCharacter(token);
         }
     }
 

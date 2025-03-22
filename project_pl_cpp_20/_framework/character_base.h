@@ -16,8 +16,10 @@ struct Position
     int posX{0};
     int posY{0};
 
-    void SetPos(int zoneId, int x, int y) { posX = x; posY = y; }
-    void SetPos(int x, int y) { posX = x; posY = y; }
+    void ResetPos() { zoneId = 0; posX = 0; posY = 0; }
+
+    void SetPos(int zoneId, int x, int y) { this->zoneId = zoneId; this->posX = x; this->posY = y; }
+    void SetPos(int x, int y) { this->posX = x; this->posY = y; }
     const auto GetPos() { return tuple<int, int>(posX, posY); }
     const int GetZoneId() { return zoneId; }
     const int GetPosX() { return posX;}
@@ -51,6 +53,7 @@ public:
     void SetToken(INT64 token) { _token = token; }
     const INT64 GetToken() { return _token; }
 
+    void ResetPos() { _pos.ResetPos(); }
     void SetPos(int zoneId, int x, int y) { _pos.SetPos(zoneId, x, y); }
     void SetPos(int x, int y) { _pos.SetPos(x, y); }
     void SetPos(const Position& pos) { _pos = pos; }

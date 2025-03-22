@@ -62,7 +62,7 @@ public:
     void Operator();
 };
 
-class ZoneEnter : public CommandUnitBase
+class EnterCharacter : public CommandUnitBase
 {
 private:
     INT64 _token{0};
@@ -71,7 +71,7 @@ private:
     int _posY{0};
 
 public:
-    ZoneEnter(INT64 token, int zoneId, int posX, int posY)
+    EnterCharacter(INT64 token, int zoneId, int posX, int posY)
         : CommandUnitBase(ECommandUnitPriority::Normal)
         , _zoneId(zoneId), _token(token), _posX(posX), _posY(posY)
     {
@@ -79,14 +79,14 @@ public:
     void Operator();
 };
 
-class ZoneLeave : public CommandUnitBase
+class LeaveCharacter : public CommandUnitBase
 {
 private:
     INT64 _token{0};
     int _zoneId{0};
 
 public:
-    ZoneLeave(INT64 token, int zoneId)
+    LeaveCharacter(INT64 token, int zoneId)
         : CommandUnitBase(ECommandUnitPriority::Normal)
         , _zoneId(zoneId), _token(token)
     {

@@ -22,7 +22,7 @@ void SendPacketToUser::Operator()
     user->SendPacket(_sendBuffer, _sendBufferSize);
 }
 
-void ZoneEnter::Operator()
+void EnterCharacter::Operator()
 {
     UserSession* user = UserSessionMgr::GetInstance().GetUserSession(_token);
     if (!user) {
@@ -38,12 +38,13 @@ void ZoneEnter::Operator()
     GetCmdQueue().Add(new SendCharacterList(_token, _zoneId));
 }
 
-void ZoneLeave::Operator()
+void LeaveCharacter::Operator()
 {
-    UserSession* user = UserSessionMgr::GetInstance().GetUserSession(_token);
-    if (user) {
-        ZoneMgr::GetInstance().LeaveCharacter(_zoneId, user->GetCharacter());
+    if (UserSession* user = UserSessionMgr::GetInstance().GetUserSession(_token)) {
+        user->_nub.ResetPos();
     }
+
+    ZoneMgr::GetInstance().LeaveCharacter(_zoneId, _token);
 
     SC_P_LEAVE sendPacket;
     sendPacket.SetToken(_token);
