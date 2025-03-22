@@ -154,6 +154,7 @@
     <ClCompile Include="zone.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="character.h" />
     <ClInclude Include="command_unit_process.h" />
     <ClInclude Include="packet_svr.h" />
     <ClInclude Include="process.h" />

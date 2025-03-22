@@ -16,27 +16,30 @@ CommandUnitQueue::~CommandUnitQueue()
 
 void CommandUnitQueue::Add(CommandUnitBase* op)
 {
-    SafeLock lock(_cs);
+    SafeLock lock(_lock);
     _cmds.push_back(op);
 }
 
 void CommandUnitQueue::Tick()
 {
-    SwapOpList();
     FireOps();
 }
 
-void CommandUnitQueue::SwapOpList()
+void CommandUnitQueue::SwapOpList(CommandList &firingCmds)
 {
-    SafeLock lock(_cs);
-    _firingCmds.swap(_cmds);
+    SafeLock lock(_lock);
+    firingCmds.swap(_cmds);
 }
 
 void CommandUnitQueue::FireOps()
 {
-    for (CommandUnitBase*it : _firingCmds) {
+    CommandList firingCmds{};
+    SwapOpList(firingCmds);
+
+    for (CommandUnitBase*it : firingCmds) {
         CommandUnitBase* cmd = it;
         ProcessAndDelete(cmd);
     }
-    _firingCmds.clear();
+
+    firingCmds.clear();
 }

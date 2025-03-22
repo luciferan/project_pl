@@ -1,12 +1,11 @@
 ﻿#include "stdafx.h"
 
-#include "packet.h"
-#include "buffer.h"
-
+#include "./packet.h"
+#include "./buffer.h"
 #include "./_common.h"
 
 //
-DWORD MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDataSize, char* pSendBuffer, DWORD& dwSendBufferSize)
+eResultCode MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDataSize, char* pSendBuffer, DWORD& dwSendBufferSize)
 {
     sPacketHead head;
     sPacketTail tail;
@@ -18,7 +17,7 @@ DWORD MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDataSize,
     tail.dwCheckTail = PACKET_CHECK_TAIL_KEY;
 
     if (head.dwLength > dwSendBufferSize) {
-        return eResultCode::RESULT_FAIL;
+        return eResultCode::fail;
     }
 
     int nPos = 0;
@@ -29,28 +28,28 @@ DWORD MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDataSize,
     dwSendBufferSize = head.dwLength;
 
     //
-    return eResultCode::RESULT_SUCC;
+    return eResultCode::succ;
 };
 
-DWORD ParseNetworkData(CCircleBuffer IN& Buffer, DWORD OUT& dwPacketLength)
+eResultCode ParseNetworkData(CCircleBuffer IN& Buffer, DWORD OUT& dwPacketLength)
 {
     DWORD dwDataSize = Buffer.GetDataSize();
 
     if (sizeof(sPacketHead) > dwDataSize) {
-        return eResultCode::RESULT_PENDING;
+        return eResultCode::pending;
     }
 
     sPacketHead Head;
     Buffer.Read((char*)&Head, sizeof(sPacketHead));
 
     if (PACKET_CHECK_HEAD_KEY != Head.dwCheckHead) {
-        return eResultCode::RESULT_INVALID_PACKET;
+        return eResultCode::invalid_packet;
     }
 
     if (Head.dwLength > dwDataSize) {
-        return eResultCode::RESULT_PENDING;
+        return eResultCode::pending;
     }
 
     dwPacketLength = Head.dwLength;
-    return eResultCode::RESULT_SUCC;
+    return eResultCode::succ;
 }

@@ -3,69 +3,23 @@
 #include "../_lib/util.h"
 
 #include "./user_session.h"
+#include "./character.h"
 
 #include <iostream>
 
 using namespace std;
 
 //
-int CUserSession::clear()
-{
-    InterlockedExchange(&_dwUsed, 0);
-    InterlockedExchange(&_dwActive, 0);
+UserSession::HandlerImpl UserSession::_impl;
 
+int UserSession::clear()
+{
     _pConnector->SetParam(nullptr);
 
     return 0;
 }
 
-int CUserSession::MessageProcess(char* pData, int nLen)
-{
-    if (sizeof(sPacketHead) > nLen) {
-        return -1;
-    }
-
-    sPacketHead* pHeader = (sPacketHead*)pData;
-    DWORD dwPackethLength = pHeader->dwLength - sizeof(sPacketHead) - sizeof(sPacketTail);
-    DWORD dwProtocol = pHeader->dwProtocol;
-
-    char* pPacketData = (char*)(pHeader + 1);
-
-    PacketTypeS2C packetType = (PacketTypeS2C)dwProtocol;
-    switch (packetType) {
-    case PacketTypeS2C::auth_result:
-        S2C_AuthResult(this, *((SC_P_AUTH_RESULT*)pPacketData));
-        break;
-    case PacketTypeS2C::enter:
-        S2C_Enter(this, *((SC_P_ENTER*)pPacketData));
-        break;
-    case PacketTypeS2C::move:
-        S2C_Move(this, *((SC_P_MOVE*)pPacketData));
-        break;
-    case PacketTypeS2C::interaction:
-        S2C_Interaction(this, *((SC_P_INTERACTION*)pPacketData));
-        break;
-    case PacketTypeS2C::heartbeat:
-        S2C_Heartbeat(this, *((SC_P_HEARTBEAT*)pPacketData));
-        break;
-    case PacketTypeS2C::echo:
-        S2C_Echo(this, *((SC_P_ECHO*)pPacketData));
-        break;
-    default:
-        LogError(format("invalid packet protocol {}", dwProtocol));
-        break;
-    }
-
-    //
-    return 0;
-}
-
-int CUserSession::DoUpdate(INT64 uiCurrTime)
-{
-    return 0;
-}
-
-eResultCode CUserSession::SendPacketData(DWORD dwProtocol, char* pData, DWORD dwSendDataSize)
+eResultCode UserSession::SendPacketData(DWORD dwProtocol, char* pData, DWORD dwSendDataSize)
 {
     //CNetworkBuffer SendBuffer;
     char SendBuffer[MAX_PACKET_BUFFER_SIZE]{};
@@ -75,7 +29,7 @@ eResultCode CUserSession::SendPacketData(DWORD dwProtocol, char* pData, DWORD dw
     return _pConnector->AddSendData((char*)&SendBuffer, dwSendBufferSize);
 }
 
-eResultCode CUserSession::SendPacket(PacketBaseC2S* packetData, DWORD packetSize)
+eResultCode UserSession::SendPacket(PacketBaseC2S* packetData, DWORD packetSize)
 {
     char sendBuffer[MAX_PACKET_BUFFER_SIZE]{};
     DWORD sendBufferSize = MAX_PACKET_BUFFER_SIZE;
@@ -85,7 +39,7 @@ eResultCode CUserSession::SendPacket(PacketBaseC2S* packetData, DWORD packetSize
 }
 
 //
-eResultCode CUserSession::ReqAuth()
+eResultCode UserSession::ReqAuth()
 {
     int id{(int)(rand() % 10)};
 
@@ -94,87 +48,184 @@ eResultCode CUserSession::ReqAuth()
     return SendPacket(&sendPacket, sizeof(sendPacket));
 }
 
-eResultCode CUserSession::ReqEnter()
+eResultCode UserSession::ReqEnter()
 {
     CS_P_ENTER sendPacket;
-    sendPacket.SetToken(_nub.GetToken());
+    sendPacket.SetToken(GetToken());
     return SendPacket(&sendPacket, sizeof(sendPacket));
 }
 
-eResultCode CUserSession::ReqMove(int posX, int posY)
+eResultCode UserSession::ReqMove(int posX, int posY)
 {
     CS_P_MOVE sendPacket;
     sendPacket.SetPos(posX, posY);
     return SendPacket(&sendPacket, sizeof(sendPacket));
 }
 
-eResultCode CUserSession::ReqInteraction(int targetId, int type)
+eResultCode UserSession::ReqInteraction(int targetId, int type)
 {
     CS_P_INTERACTION sendPacket;
     sendPacket.SetInteraction(targetId, type);
     return SendPacket(&sendPacket, sizeof(sendPacket));
 }
 
-eResultCode CUserSession::ReqEcho()
+eResultCode UserSession::ReqEcho()
 {
-    string echoMsg{format("hello. my id {}.",_nub.GetToken())};
+    string echoMsg{format("hello. my id {}.",GetToken())};
     CS_P_ECHO sendPacket;
     sendPacket.SetData(echoMsg.c_str(), (int)echoMsg.length());
     return SendPacket(&sendPacket, sizeof(sendPacket));
 }
 
-eResultCode CUserSession::RepHeartBeat()
+eResultCode UserSession::RepHeartBeat()
 {
     CS_P_HEARTBEAT sendPacket;
     return SendPacket(&sendPacket, sizeof(sendPacket));
 }
 
-bool S2C_AuthResult(CUserSession* userSession, const SC_P_AUTH_RESULT& packet)
+int UserSession::DoUpdate(INT64 uiCurrTime)
 {
-    userSession->_nub.SetId(packet.id);
-    userSession->_nub.SetToken(packet.token);
-    return true;
+    return 0;
 }
 
-bool S2C_Enter(CUserSession* userSession, const SC_P_ENTER& packet)
+int UserSession::MessageProcess(char* pData, int nLen)
 {
-    if (packet.token == userSession->_nub.GetToken()) {
-        userSession->_nub.SetPos(packet.x, packet.y);
-        cout << format("입장. 현재위치: {}, {}", userSession->_nub.GetPosX(), userSession->_nub.GetPosY()) << endl;
-    } else {
-        cout << format("{} 입장. 위치: {}, {}", packet.token, packet.x, packet.y) << endl;
+    if (sizeof(sPacketHead) > nLen) {
+        return -1;
     }
 
-    auto [x, y] = userSession->_nub.GetPos();
-    return true;
+    sPacketHead* pHeader = (sPacketHead*)pData;
+    DWORD dwPackethLength = pHeader->dwLength - sizeof(sPacketHead) - sizeof(sPacketTail);
+    DWORD dwProtocol = pHeader->dwProtocol;
+    char* pPacketData = (char*)(pHeader + 1);
+
+    return _impl.Execute(this, pPacketData);
 }
 
-bool S2C_Move(CUserSession* userSession, const SC_P_MOVE& packet)
+bool S2C_AuthResult(UserSession* userSession, const SC_P_AUTH_RESULT& packet)
 {
-    if (packet.token == userSession->_nub.GetToken()) {
-        userSession->_nub.SetPos(packet.x, packet.y);
-        cout << format("이동: {}, {}", userSession->_nub.GetPosX(), userSession->_nub.GetPosY()) << endl;
-    } else {
-        cout << format("{}가 이동: {}, {}", packet.token, packet.x, packet.y) << endl;
+    userSession->SetToken(packet.token);
 
-    }
+    auto character = CharacterMgr::GetInstance().GetPlayerCharacter();
+    character->SetId(packet.id);
+    character->SetToken(packet.token);
+
     return true;
 }
 
-bool S2C_Interaction(CUserSession* userSession, const SC_P_INTERACTION& packet)
+bool S2C_Enter(UserSession* userSession, const SC_P_ENTER& packet)
 {
-    if( packet.token == userSession->_nub.GetToken() ){
-        cout << "당신은 " << packet.targetToken << "에게 {" << packet.type << "} 행동을 합니다." << endl;
-    } else if( packet.targetToken == userSession->_nub.GetToken()) {
-        cout << packet.targetToken << "이 당신에게 {" << packet.type << "} 행동을 합니다." << endl;
+    INT64 token = packet.token;
+
+    Character* character = nullptr;
+    if (CharacterMgr::GetInstance().IsPlayerCharacter(token)) {
+        character = CharacterMgr::GetInstance().GetPlayerCharacter();
     } else {
-        cout << packet.targetToken << "가 " << packet.targetToken << "에게 {" << packet.type << "} 행동을 합니다." << endl;
+        character = CharacterMgr::GetInstance().EnterCharacter(token);
+    }
+
+    if (!character) {
+        LogError("invalid character");
+        return true;
+    }
+
+    character->SetPos(packet.x, packet.y);
+    auto [x, y] = character->GetPos();
+
+    if( CharacterMgr::GetInstance().IsPlayerCharacter(character) ){
+        cout << format("입장. 현재위치: {}:{}", x, y) << endl;
+    } else {
+        cout << format("{} 입장. 위치: {}:{}", token, x, y) << endl;
     }
 
     return true;
 }
 
-bool S2C_Heartbeat(CUserSession* userSession, const SC_P_HEARTBEAT& packet)
+bool S2C_EnterCharacter(UserSession* userSession, const SC_P_ENTER_CHARACTER_LIST& packet)
+{
+    for (int idx = 0; idx < packet.count; ++idx) {
+        const CharacterDbData& info = packet.data[idx];
+
+        Character* ch = CharacterMgr::GetInstance().EnterCharacter(info._token);
+        ch->SetPos(info._pos);
+
+        cout << format("{} 확인. 위치: {}:{}", info._token, info._pos.posX, info._pos.posY) << endl;
+    }
+
+    return true;
+}
+
+bool S2C_Leave(UserSession* userSession, const SC_P_LEAVE& packet)
+{
+    INT64 token = packet.token;
+
+    auto character = CharacterMgr::GetInstance().GetCharacter(token);
+    if (!character) {
+        LogError("invalid character");
+        return true;
+    }
+
+    if (CharacterMgr::GetInstance().IsPlayerCharacter(character)) {
+        cout << "나 퇴장" << endl;
+    } else {
+        CharacterMgr::GetInstance().LeaveCharacter(token);
+        cout << format("{} 퇴장", token) << endl;
+    }
+
+    return true;
+}
+
+bool S2C_Move(UserSession* userSession, const SC_P_MOVE& packet)
+{
+    INT64 token = packet.token;
+
+    auto character = CharacterMgr::GetInstance().GetCharacter(token);
+    if (!character) {
+        LogError("invalid character");
+        return true;
+    }
+
+    auto [old_x, old_y] = character->GetPos();
+    character->SetPos(packet.x, packet.y);
+    auto [new_x, new_y] = character->GetPos();
+
+    if (CharacterMgr::GetInstance().IsPlayerCharacter(character)) {
+        cout << format("이동: {}:{} -> {}:{}", old_x, old_y, new_x, new_y) << endl;
+    } else {
+        cout << format("{}가 이동: {}:{} -> {}:{}", packet.token, old_x, old_y, new_x, new_y) << endl;
+    }
+
+    return true;
+}
+
+bool S2C_Interaction(UserSession* userSession, const SC_P_INTERACTION& packet)
+{
+    INT64 token = packet.token;
+    INT64 targetToken = packet.targetToken;
+
+    auto ch = CharacterMgr::GetInstance().GetCharacter(token);
+    if (!ch) {
+        LogError("invalid character");
+        return true;
+    }
+    auto targetCh = CharacterMgr::GetInstance().GetCharacter(targetToken);
+    if (targetToken != 0 && !targetCh) {
+        LogError("invalid target character");
+        return true;
+    }
+
+    if (CharacterMgr::GetInstance().IsPlayerCharacter(ch)) {
+        cout << "당신은 " << targetToken << "에게 {" << packet.type << "} 행동." << endl;
+    } else if( CharacterMgr::GetInstance().IsPlayerCharacter(targetCh)) {
+        cout << targetToken << "이 당신에게 {" << packet.type << "} 행동." << endl;
+    } else {
+        cout << token << "가 " << targetToken << "에게 {" << packet.type << "} 행동." << endl;
+    }
+
+    return true;
+}
+
+bool S2C_Heartbeat(UserSession* userSession, const SC_P_HEARTBEAT& packet)
 {
     cout << "heartbeat" << endl;
 
@@ -183,9 +234,20 @@ bool S2C_Heartbeat(CUserSession* userSession, const SC_P_HEARTBEAT& packet)
     return true;
 }
 
-#include <iostream>
-bool S2C_Echo(CUserSession* userSession, const SC_P_ECHO& packet)
+bool S2C_Echo(UserSession* userSession, const SC_P_ECHO& packet)
 {
-    cout << "에코: " << packet.echoData << endl;
+    cout << packet.token <<  ": " << packet.echoData << endl;
     return true;
+}
+
+void RegisterPacketHandlers(UserSession::HandlerImpl& impl)
+{
+    impl.Register(&S2C_AuthResult);
+    impl.Register(&S2C_Enter);
+    impl.Register(&S2C_EnterCharacter);
+    impl.Register(&S2C_Leave);
+    impl.Register(&S2C_Move);
+    impl.Register(&S2C_Interaction);
+    impl.Register(&S2C_Heartbeat);
+    impl.Register(&S2C_Echo);
 }

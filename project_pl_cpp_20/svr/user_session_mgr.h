@@ -12,17 +12,16 @@
 using namespace std;
 
 //
-class UserSessionMgr : public ObjectMgrBase<CUserSession>
+class UserSessionMgr : public ObjectMgrBase<UserSession>
 {
 private:
-    list<CUserSession*> _releaseList{};
-    map<INT64, CUserSession*> _userMap{};
+    list<UserSession*> _releaseList{};
+    map<INT64, UserSession*> _userMap{};
 
     INT64 _biUpdateTime{0};
 
     //
 private:
-    //UserSessionMgr(int initCount = 20) :ObjectPoolMgrBase(initCount) { }
     UserSessionMgr() {}
 
 public:
@@ -33,17 +32,17 @@ public:
         return *pInstance;
     }
 
-    void SetReleaseObj(CUserSession* userSession);
-    void SetReleaseObj(SafeLock&, CUserSession* userSession);
+    void SetReleaseObj(UserSession* userSession);
+    void SetReleaseObj(SafeLock&, UserSession* userSession);
 
-    void SwapReleaseList(list<CUserSession*>& swapList);
+    void SwapReleaseList(list<UserSession*>& swapList);
 
-    void AddUserSessionMap(CUserSession* userSession);
-    void DelUserSessionMap(CUserSession* userSession);
-    void DelUserSessionMap(SafeLock&, CUserSession* userSession);
+    void AddUserSessionMap(UserSession* userSession);
+    void DelUserSessionMap(UserSession* userSession);
+    void DelUserSessionMap(SafeLock&, UserSession* userSession);
     void DelUserSessionMap(SafeLock&, INT64 token);
 
-    CUserSession* GetUserSession(INT64 token);
+    UserSession* GetUserSession(INT64 token);
 
     void DoUpdate(INT64 currTime);
 };

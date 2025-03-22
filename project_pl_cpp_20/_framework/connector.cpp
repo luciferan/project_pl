@@ -22,7 +22,6 @@ void Connector::Release()
 
     SAFE_DELETE(_RecvRequest.pBuffer);
     SAFE_DELETE(_SendRequest.pBuffer);
-    //SAFE_DELETE(_InnerRequest.pBuffer);
 }
 
 void Connector::TryRelease()
@@ -41,22 +40,22 @@ void Connector::TryRelease()
 
 void Connector::SetDomainA(char* pszDomain, WORD wPort)
 {
-    strncpy_s(_szDomain, eNetwork::MAX_LEN_DOMAIN_STRING, pszDomain, _TRUNCATE);
+    strncpy_s(_szDomain, NetworkConst::MAX_LEN_DOMAIN_STRING, pszDomain, _TRUNCATE);
     _wPort = wPort;
 
     size_t converted = 0;
-    mbstowcs_s(&converted, _wcsDomain, eNetwork::MAX_LEN_DOMAIN_STRING, _szDomain, _TRUNCATE);
+    mbstowcs_s(&converted, _wcsDomain, NetworkConst::MAX_LEN_DOMAIN_STRING, _szDomain, _TRUNCATE);
 
     return;
 }
 
 void Connector::SetDomain(WCHAR* pwcsDomain, WORD wPort)
 {
-    wcsncpy_s(_wcsDomain, eNetwork::MAX_LEN_DOMAIN_STRING, pwcsDomain, wcslen(pwcsDomain));
+    wcsncpy_s(_wcsDomain, NetworkConst::MAX_LEN_DOMAIN_STRING, pwcsDomain, wcslen(pwcsDomain));
     _wPort = wPort;
 
     size_t converted = 0;
-    wcstombs_s(&converted, _szDomain, eNetwork::MAX_LEN_DOMAIN_STRING, _wcsDomain, _TRUNCATE);
+    wcstombs_s(&converted, _szDomain, NetworkConst::MAX_LEN_DOMAIN_STRING, _wcsDomain, _TRUNCATE);
 
     return;
 }
@@ -67,8 +66,8 @@ void Connector::GetSocket2IP(char* pszIP)
     int iLen = sizeof(SockAddr);
 
     getpeername(_socket, (sockaddr*)&SockAddr, &iLen);
-    //strncpy_s(pszIP, eSession::MAX_LEN_IP4_STRING, inet_ntoa(SockAddr.sin_addr), iLen);
-    inet_ntop(AF_INET, &SockAddr.sin_addr, pszIP, eNetwork::MAX_LEN_IP4_STRING);
+    //strncpy_s(pszIP, NetworkConst::MAX_LEN_IP4_STRING, inet_ntoa(SockAddr.sin_addr), iLen);
+    inet_ntop(AF_INET, &SockAddr.sin_addr, pszIP, NetworkConst::MAX_LEN_IP4_STRING);
 }
 
 void Connector::ConvertSocket2IP()
@@ -77,11 +76,11 @@ void Connector::ConvertSocket2IP()
     int iLen = sizeof(SockAddr);
 
     getpeername(_socket, (sockaddr*)&SockAddr, &iLen);
-    //strncpy_s(_szDomain, eSession::MAX_LEN_IP4_STRING, inet_ntoa(SockAddr.sin_addr), iLen);
+    //strncpy_s(_szDomain, NetworkConst::MAX_LEN_IP4_STRING, inet_ntoa(SockAddr.sin_addr), iLen);
     inet_ntop(AF_INET, &SockAddr.sin_addr, _szDomain, _countof(_szDomain));
 
     size_t convert = 0;
-    mbstowcs_s(&convert, _wcsDomain, eNetwork::MAX_LEN_IP4_STRING, _szDomain, eNetwork::MAX_LEN_IP4_STRING);
+    mbstowcs_s(&convert, _wcsDomain, NetworkConst::MAX_LEN_IP4_STRING, _szDomain, NetworkConst::MAX_LEN_IP4_STRING);
 }
 
 
@@ -237,67 +236,3 @@ WSABUF* Connector::GetRecvWSABuffer()
 {
     return &_RecvRequest.pBuffer->_WSABuffer;
 }
-
-//int Connector::AddInnerQueue(char* pSendData, DWORD dwSendDataSize)
-//{
-//    if (!pSendData) {
-//        return -1;
-//    }
-//    if (MAX_PACKET_BUFFER_SIZE < dwSendDataSize) {
-//        return -1;
-//    }
-//
-//    CNetworkBuffer* pBuffer = new CNetworkBuffer;
-//    if (!pBuffer) {
-//        return -1;
-//    }
-//    int nRet = pBuffer->SetInnerData(this, pSendData, dwSendDataSize);
-//    if (0 > nRet) {
-//        SAFE_DELETE(pBuffer);
-//        return -1;
-//    }
-//
-//    //
-//    SafeLock lock(_InnerQueueLock);
-//    _InnerQueue.push(pBuffer);
-//
-//    return (int)_InnerQueue.size();
-//}
-//
-//int Connector::InnerPrepare()
-//{
-//    if (_InnerQueue.empty()) {
-//        return 0;
-//    }
-//    if (0 < _dwInnerRef) {
-//        return 0;
-//    }
-//
-//    SafeLock lock(_InnerQueueLock);
-//
-//    CNetworkBuffer* pPacket = _InnerQueue.front();
-//    _InnerQueue.pop();
-//
-//    _InnerRequest.ResetOverlapped();
-//    _InnerRequest.pBuffer = pPacket;
-//
-//    return pPacket->GetDataSize();
-//}
-//
-//int Connector::InnerComplete(DWORD dwInnerSize)
-//{
-//    CNetworkBuffer* pBuffer = _InnerRequest.pBuffer;
-//    if (!pBuffer) {
-//        return -1;
-//    }
-//    CPacketStruct* pPacket = (CPacketStruct*)pBuffer;
-//
-//    //
-//    CRecvPacketQueue::GetInstance().Push(pPacket);
-//    return 0;
-//}
-//
-//WSABUF* Connector::GetInnerWSABuffer()
-//{
-//    return &_InnerRequest.pBuffer->_WSABuffer;
-//}

@@ -9,11 +9,11 @@ int Connector::DataParser()
 {
     int nPacketLength = 0;
 
-    DWORD dwRet = ParseNetworkData(_RecvDataBuffer, (DWORD&)nPacketLength);
-    switch (dwRet) {
-        case eResultCode::RESULT_INVALID_PACKET:
-            return -1;
-            break;
+    eResultCode result = ParseNetworkData(_RecvDataBuffer, (DWORD&)nPacketLength);
+    switch (result) {
+    case eResultCode::invalid_packet:
+        return -1;
+        break;
     }
 
     return nPacketLength;

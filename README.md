@@ -6,10 +6,17 @@
 history
 # todo
 - 로그 남기는 위치도 변경. 소스파일 위치에 남고 있었네
-- 패킷처리 함수포인터로 변경
 - 패킷큐 구조 변경. 처리는 커맨드큐로 이동할수 있도록 수정
 - enum 전부 enum class로 변경
 - 네이밍 정리 필요함. 예전 스타일이랑 aa스타일이랑 섞여버림
+
+#20250322
+- enum class로의 변경 진행중
+- packethandler추가. 패킷처리를 함수포인터로 변경
+- commandunitbase 수정
+- broadcast 오류 수정
+- lock을 mutex로 바꿔서 발생한 문제들 수정
+- 코드 정리
 
 #20250310
 - winsockapi 충돌이 너무 심해서 프리컴파일드헤더 추가

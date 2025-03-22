@@ -22,5 +22,5 @@ eResultCode Network::DoUpdate(INT64 biCurrTime)
         g_PerformanceLog.Write(wstrReport.c_str());
     }
 
-    return RESULT_SUCC;
+    return eResultCode::succ;
 }

@@ -2,8 +2,8 @@
 #ifndef __PACKET_PROTOCOL_SC_H__
 #define __PACKET_PROTOCOL_SC_H__
 
-#include "./_common.h"
-#include "./packet_protocol_base.h"
+#include "./packet.h"
+#include "../_framework/character_base.h"
 
 enum class PacketTypeS2C : unsigned int
 {
@@ -11,6 +11,7 @@ enum class PacketTypeS2C : unsigned int
     auth_result,
 
     enter,
+    enter_character,
     leave,
     move,
     interaction,
@@ -24,9 +25,10 @@ enum class PacketTypeS2C : unsigned int
 struct PacketBaseS2C : public PacketBase
 {
 public:
-    PacketTypeS2C type{PacketTypeS2C::Max};
-
-    PacketBaseS2C(PacketTypeS2C type) : PacketBase(PacketType::S2C), type(type) {}
+    PacketBaseS2C(PacketTypeS2C type)
+    {
+        this->type = static_cast<unsigned int>(type);
+    }
 };
 
 struct SC_P_AUTH_RESULT : public PacketBaseS2C
@@ -55,6 +57,27 @@ public:
         this->token = token;
         this->x = x;
         this->y = y;
+    }
+};
+
+struct SC_P_ENTER_CHARACTER_LIST : public PacketBaseS2C
+{
+    static const int MAX_SEND_COUNT_CHARACTER_DB_DATA = 20;
+public:
+    int count{0};
+    CharacterDbData data[MAX_SEND_COUNT_CHARACTER_DB_DATA]{};
+
+    SC_P_ENTER_CHARACTER_LIST() : PacketBaseS2C(PacketTypeS2C::enter_character) {}
+    void Reset()
+    {
+        count = 0;
+        memset(data, 0, sizeof(data));
+
+    }
+    bool SetData(CharacterDbData& data)
+    {
+        this->data[this->count++] = data;
+        return MAX_SEND_COUNT_CHARACTER_DB_DATA >= this->count;
     }
 };
 
@@ -110,12 +133,14 @@ public:
 struct SC_P_ECHO : public PacketBaseS2C
 {
 public:
+    INT64 token{0};
     char echoData[32]{};
     int echoDataSize = 0;
 
     SC_P_ECHO() : PacketBaseS2C(PacketTypeS2C::echo) {}
-    void SetData(const char* data, int size)
+    void SetData(INT64 token, const char* data, int size)
     {
+        this->token = token;
         memcpy_s(echoData, 32, data, size);
         echoDataSize = min(32, size);
     }

@@ -56,11 +56,10 @@ public:
 class CommandUnitQueue
 {
 private:
-    Lock _cs;
+    Lock _lock;
 
     typedef std::vector<CommandUnitBase*> CommandList;
     CommandList _cmds{};
-    CommandList _firingCmds{};
 
 public:
     CommandUnitQueue() {}
@@ -70,7 +69,7 @@ public:
     void Tick();
 
 private:
-    void SwapOpList();
+    void SwapOpList(CommandList &firingCmd);
     void FireOps();
 };
 

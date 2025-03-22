@@ -51,11 +51,8 @@ public:
     bool Start();
     bool Stop();
 
-    unsigned int UpdateThread(stop_token token);
     unsigned int ProcessThread(stop_token token);
-    unsigned int MonitorThread(stop_token token);
-
-    bool SessionRelease(INT64 biCurrTime);
+    unsigned int UpdateThread(stop_token token);
 
     CommandUnitQueue& GetCmdQueue() { return _commandQueue; }
 };

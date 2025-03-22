@@ -30,7 +30,6 @@
     <ClInclude Include="packet.h" />
     <ClInclude Include="packet_data_queue.h" />
     <ClInclude Include="packet_protocol_cs.h" />
-    <ClInclude Include="packet_protocol_base.h" />
     <ClInclude Include="packet_protocol_sc.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="_common.h" />

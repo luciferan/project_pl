@@ -5,7 +5,7 @@
 #include "../_lib/object_pool_mgr.h"
 #include "./user_session.h"
 
-class UserSessionMgr : public ObjectPoolMgrBase<CUserSession>
+class UserSessionMgr : public ObjectPoolMgrBase<UserSession>
 {
 private:
 public:

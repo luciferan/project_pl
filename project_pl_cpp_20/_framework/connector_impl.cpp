@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 
 #include "./connector.h"
+
 #include "../_lib/util.h"
 
 //
@@ -60,6 +61,22 @@ int DefaultDataParser(CCircleBuffer &buffer)
 //    }
 //}
 
+string Connector::GetReportA()
+{
+    string strReport{};
+
+    if (GetActive()) {
+        strReport.append(FormatA("[%d] connected: %d,", GetUID(), GetSocket()));
+    } else {
+        strReport.append(FormatA("[%d] disconnected: ", GetUID()));
+    }
+
+    strReport.append(FormatA("sq:%d,", _SendQueue.size()));
+    strReport.append(FormatA("rb:(%d/%d),", _RecvDataBuffer.GetDataSize(), _RecvDataBuffer.GetBufferSize()));
+
+    return strReport;
+}
+
 wstring Connector::GetReport()
 {
     wstring wstrReport{};
@@ -72,7 +89,6 @@ wstring Connector::GetReport()
 
     wstrReport.append(FormatW(L"sq:%d,", _SendQueue.size()));
     wstrReport.append(FormatW(L"rb:(%d/%d),", _RecvDataBuffer.GetDataSize(), _RecvDataBuffer.GetBufferSize()));
-    //wstrReport.append(FormatW(L"iq:%d", _InnerQueue.size()));
 
     return wstrReport;
 }

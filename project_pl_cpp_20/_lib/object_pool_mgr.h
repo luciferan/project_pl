@@ -136,9 +136,25 @@ public:
         return obj;
     }
 
+    T* GetFreeObject(SafeLock&)
+    {
+        auto obj(_objectPool.GetFreeObjectPtr());
+        _usedList.emplace_back(obj);
+
+        return obj;
+    }
+
     void SetFreeObject(T* obj)
     {
         SafeLock lock(_lock);
+        if (find(_usedList.begin(), _usedList.end(), obj) != _usedList.end()) {
+            _usedList.remove(obj);
+        }
+        _objectPool.SetFreeObjectPtr(obj);
+    }
+
+    void SetFreeObject(SafeLock&, T* obj)
+    {
         if (find(_usedList.begin(), _usedList.end(), obj) != _usedList.end()) {
             _usedList.remove(obj);
         }
@@ -154,7 +170,7 @@ public:
     wstring GetReport()
     {
         SafeLock lock(_lock);
-        return format("L{}, used:{}", _objectPool.GetReportA(), _usedList.size());
+        return format(L"{}, used:{}", _objectPool.GetReport(), _usedList.size());
     }
 };
 

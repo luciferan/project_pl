@@ -3,10 +3,9 @@
 #define __PACKET_DATA_QUEUE_H__
 
 #include "./_common.h"
+#include "./buffer.h"
 
 #include "../_lib/SafeLock.h"
-#include "Buffer.h"
-//#include "../_framework/Packet.h"
 
 #include <unordered_map>
 #include <list>
@@ -114,7 +113,6 @@ public:
     size_t Push(CPacketStruct* pPacketData, int phase = 0)
     {
         if (!pPacketData) {
-
             return -1;
         }
         if (0 > phase || ePacketDataQueue::MAX_PACKET_QUEUE_PHASE <= phase) {

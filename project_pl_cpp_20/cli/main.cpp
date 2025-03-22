@@ -12,8 +12,7 @@ int main(int argc, char* argv[])
 
     //
     g_Log.Write(L"system: start.");
-    App app;
-    app.Run();
+    App::GetInstance().Start();
     g_Log.Write(L"system: end.");
     return 0;
 }

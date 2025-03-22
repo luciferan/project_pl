@@ -4,25 +4,22 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
-enum eResultCode
+enum class eResultCode : int
 {
-    RESULT_SUCC = 0,
-    RESULT_FAIL = 1,
+    succ = 0,
+    fail = 1,
 
-    RESULT_INVALID_PACKET,
-    RESULT_SOCKET_DISCONNECTED,
-
-    RESULT_PENDING,
+    invalid_packet,
+    socket_disconnected,
+    pending,
 };
 
-enum eNetwork
+namespace NetworkConst
 {
-    MAX_THREAD_COUNT = 1,
-
-    MAX_LEN_IP4_STRING = 16,
-    MAX_LEN_DOMAIN_STRING = 1024,
-
-    MAX_LOG_BUFFER_SIZE = 1024 * 10,
+const int MAX_THREAD_COUNT = 1;
+const int MAX_LEN_IP4_STRING = 16;
+const int MAX_LEN_DOMAIN_STRING = 1024;
+const int MAX_LOG_BUFFER_SIZE = 1024 * 10;
 };
 
 #define SAFE_DELETE(ptr) { if(ptr) delete ptr; ptr = nullptr; }

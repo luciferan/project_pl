@@ -12,6 +12,8 @@
 #include <string>
 #include <format>
 
+using namespace std;
+
 //
 class Connector;
 class ConnectorMgr : public ObjectPoolMgrBase<Connector>

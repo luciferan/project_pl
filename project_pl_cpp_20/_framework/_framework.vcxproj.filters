@@ -35,9 +35,6 @@
     <ClInclude Include="packet.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="packet_protocol_base.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
     <ClInclude Include="packet_data_queue.h">
       <Filter>소스 파일</Filter>
     </ClInclude>

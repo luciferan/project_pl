@@ -2,12 +2,12 @@
 #ifndef __PACKET_PROTOCOL_CS_H__
 #define __PACKET_PROTOCOL_CS_H__
 
-#include "./_common.h"
-#include "./packet_protocol_base.h"
+#include "./packet.h"
 
 enum class PacketTypeC2S : unsigned int
 {
     invalid = 0,
+
     auth,
 
     enter,
@@ -24,9 +24,10 @@ enum class PacketTypeC2S : unsigned int
 struct PacketBaseC2S : public PacketBase
 {
 public:
-    PacketTypeC2S type{PacketTypeC2S::Max};
-
-    PacketBaseC2S(PacketTypeC2S type) : PacketBase(PacketType::C2S), type(type) {}
+    PacketBaseC2S(PacketTypeC2S type) 
+    {
+        this->type = static_cast<unsigned int>(type);
+    }
 };
 
 struct CS_P_AUTH : public PacketBaseC2S

@@ -1,5 +1,6 @@
-﻿#include "../_framework/connector.h"
-#include "./packet_cli.h"
+﻿#include "./packet_cli.h"
+
+#include "../_framework/connector.h"
 #include "../_lib/util.h"
 
 //
@@ -7,11 +8,11 @@ int Connector::DataParser()
 {
     int nPacketLength = 0;
 
-    DWORD dwRet = ParseNetworkData(_RecvDataBuffer, (DWORD&)nPacketLength);
-    switch (dwRet) {
-        case eResultCode::RESULT_INVALID_PACKET:
-            return -1;
-            break;
+    eResultCode result = ParseNetworkData(_RecvDataBuffer, (DWORD&)nPacketLength);
+    switch (result) {
+    case eResultCode::invalid_packet:
+        return -1;
+        break;
     }
 
     return nPacketLength;
@@ -36,20 +37,3 @@ bool Connector::CheckHeartbeat(INT64 biCurrTime)
         return false;
     }
 }
-
-//wstring Connector::GetReport()
-//{
-//    wstring wstrReport{};
-//
-//    if (GetActive()) {
-//        wstrReport.append(FormatW(L"[%d] connected: %d,", GetUID(), GetSocket()));
-//    } else {
-//        wstrReport.append(FormatW(L"[%d] disconnected: ", GetUID()));
-//    }
-//
-//    wstrReport.append(FormatW(L"sq:%d,", _SendQueue.size()));
-//    wstrReport.append(FormatW(L"rb:(%d/%d),", _RecvDataBuffer.GetDataSize(), _RecvDataBuffer.GetBufferSize()));
-//    //wstrReport.append(FormatW(L"iq:%d", _InnerQueue.size()));
-//
-//    return wstrReport;
-//}

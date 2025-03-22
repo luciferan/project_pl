@@ -3,13 +3,6 @@
 #define __NETWORK_H__
 
 #include "./_common.h"
-//#pragma comment(lib, "ws2_32.lib")
-
-//#include <winsock2.h>
-//#include <ws2tcpip.h>
-//#include <windows.h>
-//#include <process.h>
-//#include <wchar.h>
 
 #include <queue>
 #include <string>
@@ -22,22 +15,15 @@
 #include <functional>
 #include <source_location>
 
-////
-//extern void WriteMiniNetLog(std::wstring wstr);
-//extern void WritePacketLog(std::wstring str, const char* pPacketData, int nPacketDataSize);
-//extern void Log(const std::wstring& wstr);
-//extern void Log(const std::string& str);
-//extern void ErrorLog(const std::string& str, std::source_location loc = std::source_location::current());
-
-//
 using namespace std;
 
+//
 class Connector;
 class CNetworkBuffer;
 
 struct HostInfo
 {
-    WCHAR wcsIP[eNetwork::MAX_LEN_IP4_STRING + 1]{0,};
+    WCHAR wcsIP[NetworkConst::MAX_LEN_IP4_STRING + 1]{0,};
     WORD wPort{0};
 };
 
@@ -97,7 +83,6 @@ public:
     void Disconnect(SOCKET socket);
 
     eResultCode Write(Connector* pConnector, char* pSendData, int iSendDataSize);
-    //eResultCode InnerWrite(Connector* pConnector, char* pSendData, int nSendDataSize);
 
     void DoSend(Connector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwSendCompleteSize);
     void DoRecv(Connector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwRecvCompleteSize);

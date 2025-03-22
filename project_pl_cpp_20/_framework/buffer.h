@@ -3,14 +3,12 @@
 #define __BUFFER_H__
 
 #include "./_common.h"
-//
-//#include <winsock2.h>
-//#include <WS2tcpip.h>
-//#include <Windows.h>
 
 #include "../_lib/safeLock.h"
 
 #include <string>
+
+using namespace std;
 
 //
 class Connector;
@@ -153,7 +151,6 @@ enum class eNetworkBuffer : unsigned char
 {
     OP_SEND = 1,
     OP_RECV = 2,
-    //OP_INNER = 3,
 };
 
 class CNetworkBuffer
@@ -200,24 +197,6 @@ public:
 
         return _nBufferSize;
     }
-
-    //int SetInnerData(Connector* pConnector, char* pData, UINT32 nDataSize)
-    //{
-    //    if (!pData || _nBufferSize < (ULONG)nDataSize) {
-    //        return -1;
-    //    }
-
-    //    _eOperator = eNetworkBuffer::OP_INNER;
-
-    //    memcpy_s(_pBuffer, _nBufferSize, pData, nDataSize);
-    //    _nDataSize = nDataSize;
-
-    //    _pConnector = pConnector;
-    //    _WSABuffer.buf = _pBuffer;
-    //    _WSABuffer.len = _nDataSize;
-
-    //    return _nDataSize;
-    //}
 };
 
 //

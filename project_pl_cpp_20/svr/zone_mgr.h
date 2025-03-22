@@ -6,6 +6,9 @@
 
 #include "./zone.h"
 
+using namespace std;
+
+//
 class ZoneMgr : public ObjectMgrBase<Zone>
 {
 private:
@@ -58,4 +61,5 @@ public:
     }
 };
 
+//
 #endif //__ZONE_MGR_H__

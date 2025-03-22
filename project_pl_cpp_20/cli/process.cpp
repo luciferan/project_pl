@@ -6,15 +6,21 @@
 
 #include "./packet_cli.h"
 #include "./user_session_mgr.h"
+#include "./character.h"
 //#include "Config.h"
-#include "./command.cpp"
 
 #include <iostream>
 #include <format>
 #include <source_location>
 
-//
-bool App::Run()
+// command unit -----------------------------------------------------------------
+CommandUnitQueue& GetCmdQueue()
+{
+    return App::GetInstance().GetCmdQueue();
+}
+
+// App --------------------------------------------------------------------------
+bool App::Start()
 {
     Network& net{Network::GetInstance()};
     net._config.workerThreadCount = 2;
@@ -27,7 +33,7 @@ bool App::Run()
 
     _threads.emplace_back(thread{&App::ProcessThread, this, _threadStop.get_token()});
     _threads.emplace_back(thread{&App::CommandThread, this, _threadStop.get_token()});
-    _threads.emplace_back(thread{&App::UpdateThread, this, _threadStop.get_token()});
+    //_threads.emplace_back(thread{&App::UpdateThread, this, _threadStop.get_token()});
 
     //
     _threadSuspended = 0;
@@ -58,24 +64,23 @@ bool App::Stop()
     return true;
 }
 
-int App::ProcessThread(stop_token token)
+unsigned int App::ProcessThread(stop_token token)
 {
-    Log(format("log: {} create", source_location::current().function_name()));
+    Log(format("log: {} create", "App::ProcessThread"));
     _threadSuspended.wait(1);
 
-    //
     Network& net{Network::GetInstance()};
     CRecvPacketQueue& recvPacketQueue{CRecvPacketQueue::GetInstance()};
     UserSessionMgr& sessionMgr{UserSessionMgr::GetInstance()};
 
     Connector* pConnector{nullptr};
-    CUserSession* pUserSession{nullptr};
+    UserSession* pUserSession{nullptr};
     CPacketStruct* pPacket{nullptr};
 
     DWORD dwPacketSize{0};
 
     //
-    Log(format("log: {}: start", source_location::current().function_name()));
+    Log(format("log: {}: start", "App::ProcessThread"));
     while (!token.stop_requested()) {
         pPacket = recvPacketQueue.Pop();
         if (!pPacket) {
@@ -95,7 +100,7 @@ int App::ProcessThread(stop_token token)
             continue;
         }
 
-        if (pUserSession = (CUserSession*)pConnector->GetParam()) {
+        if (pUserSession = (UserSession*)pConnector->GetParam()) {
             pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
         } else {
             sPacketHead* pHeader = (sPacketHead*)pPacket->_pBuffer;
@@ -113,49 +118,50 @@ int App::ProcessThread(stop_token token)
         }
 
         recvPacketQueue.ReleasePacketStruct(pPacket);
+
+        //
+        _commandQueue.Tick();
     }
 
-    Log(format("log: {}: end", source_location::current().function_name()));
+    Log(format("log: {}: end", "App::ProcessThread"));
     return 0;
 }
 
-int App::UpdateThread(stop_token token)
+unsigned int App::UpdateThread(stop_token token)
 {
-    Log(format("log: {} create", source_location::current().function_name()));
+    Log(format("log: {} create", "App::UpdateThread"));
     _threadSuspended.wait(1);
 
     Network& net{Network::GetInstance()};
     UserSessionMgr& sessionMgr{UserSessionMgr::GetInstance()};
 
-    CUserSession* pUerSession{nullptr};
+    UserSession* pUerSession{nullptr};
     INT64 uiCurrTime{0};
-    list<CUserSession*> sessionList{};
+    list<UserSession*> sessionList{};
 
     //
-    Log(format("log: {}: start", source_location::current().function_name()));
+    Log(format("log: {}: start", "App::UpdateThread"));
     while (!token.stop_requested()) {
         //sessionMgr.GetUserSessionList(sessionList);
 
-        //for (CUserSession* pSession : sessionList) {
+        //for (UserSession* pSession : sessionList) {
         //    pSession->DoUpdate(uiCurrTime);
         //}
-
-        _commandQueue.Tick();
     }
 
-    Log(format("log: {}: end", source_location::current().function_name()));
+    Log(format("log: {}: end", "App::UpdateThread"));
     return 0;
 }
 
-int App::CommandThread(stop_token token)
+unsigned int App::CommandThread(stop_token token)
 {
-    Log(format("log: {} create", source_location::current().function_name()));
+    Log(format("log: {} create", "App::CommandThread"));
     _threadSuspended.wait(1);
 
     Network& net = Network::GetInstance();
 
     Connector* pConnector{nullptr};
-    CUserSession* pSession{nullptr};
+    UserSession* pSession{nullptr};
 
     INT64 biCurrTime{0};
     char cmd[1024]{};
@@ -164,7 +170,7 @@ int App::CommandThread(stop_token token)
     WORD wHostPort = 60010;
 
     //
-    Log(format("log: {}: start", source_location::current().function_name()));
+    Log(format("log: {}: start", "App::CommandThread"));
     while (!token.stop_requested()) {
         gets_s(cmd, 1024);
 
@@ -176,29 +182,41 @@ int App::CommandThread(stop_token token)
         vector<string> cmdTokens{};
         TokenizeA(cmdStr, cmdTokens, " ");
         if (0 == strncmp(cmdTokens[0].c_str(), "/connect", cmdTokens[0].length())) {
-            Log(format(L"info: try connect: {} {}", wszHostIP, wHostPort));
-            if (pConnector = net.Connect(wszHostIP, wHostPort)) {
-                Log("info: connected");
+            if( !pConnector) {
+                Log(format(L"info: try connect: {} {}", wszHostIP, wHostPort));
+                if (pConnector = net.Connect(wszHostIP, wHostPort)) {
+                    Log("info: connected");
 
-                if (pSession = UserSessionMgr::GetInstance().GetFreeObject()) {
-                    pConnector->SetParam(pSession);
-                    pSession->SetConnector(pConnector);
-                } else {
-                    LogError("CUserSesionMgr::GetFreeUserSession fail");
-                    net.Disconnect(pConnector);
+                    if (pSession = UserSessionMgr::GetInstance().GetFreeObject()) {
+                        pConnector->SetParam(pSession);
+                        pSession->SetConnector(pConnector);
+                    } else {
+                        LogError("CUserSesionMgr::GetFreeUserSession fail");
+                        net.Disconnect(pConnector);
+                    }
                 }
+            } else {
+                Log("info: already connected");
             }
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/disconnect", cmdTokens[0].length())) {
             if (pConnector) {
                 net.Disconnect(pConnector);
+                pConnector = nullptr;
             }
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/auth", cmdTokens[0].length())) {
             if (pSession) {
                 pSession->ReqAuth();
             }
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/enter", cmdTokens[0].length())) {
+            pSession->ReqEnter();
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/leave", cmdTokens[0].length())) {
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/move", cmdTokens[0].length())) {
+            auto ch = CharacterMgr::GetInstance().GetPlayerCharacter();
+            auto [x, y] = ch->GetPos();
+            x += (int)((rand() % 10) * (rand() % 2 == 0 ? 1 : -1));
+            y += (int)((rand() % 10) * (rand() % 2 == 0 ? 1 : -1));
+
+            pSession->ReqMove(x, y);
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/send", cmdTokens[0].length())) {
             if (pSession) {
                 pSession->ReqEcho();
@@ -218,7 +236,6 @@ int App::CommandThread(stop_token token)
                 }
                 this_thread::sleep_for(100ms);
             }
-
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/exit", cmdTokens[0].length())) {
             Stop();
             break;
@@ -232,6 +249,6 @@ int App::CommandThread(stop_token token)
         }
     }
 
-    Log(format("log: {}: end", source_location::current().function_name()));
+    Log(format("log: {}: end", "App::CommandThread"));
     return 0;
 }

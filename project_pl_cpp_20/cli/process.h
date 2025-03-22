@@ -2,11 +2,11 @@
 #ifndef __PROCESS_H__
 #define __PROCESS_H__
 
-//
 #include "../_framework/network.h"
 #include "../_lib/exception_report.h"
 #include "../_lib/util.h"
-#include "../_lib/command_unit_base.h"
+
+#include "./command_unit_process.h"
 
 #include <thread>
 #include <atomic>
@@ -15,6 +15,7 @@
 //
 //bool LoadConfig();
 
+//
 class App
 {
 private:
@@ -27,17 +28,28 @@ private:
     CommandUnitQueue _commandQueue;
 
     //
-public:
+private:
     App() {}
-    ~App() {}
 
-    bool Run();
+public:
+    ~App() {}
+    static App& GetInstance()
+    {
+        static App* pInstance = new App;
+        return *pInstance;
+    }
+
+    bool Start();
     bool Stop();
 
-    int ProcessThread(stop_token token);
-    int UpdateThread(stop_token token);
-    int CommandThread(stop_token token);
+    unsigned int ProcessThread(stop_token token);
+    unsigned int UpdateThread(stop_token token);
+    unsigned int CommandThread(stop_token token);
+
+    CommandUnitQueue& GetCmdQueue() { return _commandQueue; }
 };
+
+extern CommandUnitQueue& GetCmdQueue();
 
 //
 #endif //__PROCESS_H__

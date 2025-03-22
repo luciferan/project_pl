@@ -2,14 +2,16 @@
 #ifndef __COMMAND_UNIT_PROCESS_H__
 #define __COMMAND_UNIT_PROCESS_H__
 
-//#include "../_framework/Connector.h"
-#include "../_lib/util.h"
 #include "../_lib/command_unit_base.h"
+#include "../_lib/util.h"
 
-//#include "./process.h"
 #include "./packet_svr.h"
 #include "./user_session_mgr.h"
 #include "./zone_mgr.h"
+
+#include <list>
+
+using namespace std;
 
 //
 enum class EBroadcastType : short
@@ -44,6 +46,12 @@ private:
     DWORD _sendBufferSize{MAX_PACKET_BUFFER_SIZE};
 
 public:
+    SendPacketToUser(INT64 token, PacketBaseS2C* packetData, DWORD packetSize)
+        : CommandUnitBase(ECommandUnitPriority::Normal)
+        , _token(token)
+    {
+        MakeNetworkPacket((DWORD)packetData->type, (char*)packetData, packetSize, _sendBuffer, _sendBufferSize);
+    }
     SendPacketToUser(INT64 token, char* sendBuffer, DWORD sendBufferSize)
         : CommandUnitBase(ECommandUnitPriority::Normal)
         , _token(token)
@@ -86,4 +94,20 @@ public:
     void Operator();
 };
 
+class SendCharacterList : public CommandUnitBase
+{
+private:
+    INT64 _exceptCharacterToken{0};
+    int _zoneId{0};
+
+public:
+    SendCharacterList(INT64 exceptCharacterToken, int zoneId)
+        : CommandUnitBase(ECommandUnitPriority::Normal)
+        , _exceptCharacterToken(exceptCharacterToken), _zoneId(zoneId)
+    {
+    }
+    void Operator();
+};
+
+//
 #endif //__COMMAND_UNIT_PROCESS_H__

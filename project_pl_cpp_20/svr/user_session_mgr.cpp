@@ -1,37 +1,40 @@
 ﻿#include "stdafx.h"
+
 #include "./user_session_mgr.h"
+
 #include "../_lib/util_time.h"
 
-void UserSessionMgr::SetReleaseObj(CUserSession* userSession)
+//
+void UserSessionMgr::SetReleaseObj(UserSession* userSession)
 {
     SafeLock lock(_lock);
     _releaseList.emplace_back(userSession);
 }
 
-void UserSessionMgr::SetReleaseObj(SafeLock&, CUserSession* userSession)
+void UserSessionMgr::SetReleaseObj(SafeLock&, UserSession* userSession)
 {
     _releaseList.emplace_back(userSession);
 }
 
-void UserSessionMgr::SwapReleaseList(list<CUserSession*>& swapList)
+void UserSessionMgr::SwapReleaseList(list<UserSession*>& swapList)
 {
     SafeLock lock(_lock);
     swapList.swap(_releaseList);
 }
 
-void UserSessionMgr::AddUserSessionMap(CUserSession* userSession)
+void UserSessionMgr::AddUserSessionMap(UserSession* userSession)
 {
     SafeLock lock(_lock);
     _userMap.insert({userSession->GetToken(), userSession});
 }
 
-void UserSessionMgr::DelUserSessionMap(CUserSession* userSession)
+void UserSessionMgr::DelUserSessionMap(UserSession* userSession)
 {
     SafeLock lock(_lock);
     DelUserSessionMap(lock, userSession->GetToken());
 }
 
-void UserSessionMgr::DelUserSessionMap(SafeLock& lock, CUserSession* userSession)
+void UserSessionMgr::DelUserSessionMap(SafeLock& lock, UserSession* userSession)
 {
     if (userSession) {
         DelUserSessionMap(lock, userSession->GetToken());
@@ -45,7 +48,7 @@ void UserSessionMgr::DelUserSessionMap(SafeLock&, INT64 token)
     }
 }
 
-CUserSession* UserSessionMgr::GetUserSession(INT64 token)
+UserSession* UserSessionMgr::GetUserSession(INT64 token)
 {
     SafeLock lock(_lock);
     if (auto it = _userMap.find(token); it != _userMap.end()) {
@@ -66,7 +69,7 @@ void UserSessionMgr::DoUpdate(INT64 currTime)
         }
 
         //
-        list<CUserSession*> releaseList{};
+        list<UserSession*> releaseList{};
         SwapReleaseList(releaseList);
 
         if (releaseList.size()) {

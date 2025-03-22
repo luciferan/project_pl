@@ -10,7 +10,6 @@ extern void Log(const std::string& str);
 int main(int argc, char* argv[])
 {
     CExceptionReport::GetInstance().ExceptionHandlerBegin();
-
     srand((unsigned int)time(NULL));
 
     //
@@ -38,10 +37,6 @@ int main(int argc, char* argv[])
     app.Stop();
 
     //
-    CRecvPacketQueue::GetInstance().ForceActivateQueueEvent();
-
     Log("system: svr end.");
-
-    //
     return 0;
 }

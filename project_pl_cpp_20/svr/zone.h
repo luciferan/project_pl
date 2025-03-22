@@ -5,8 +5,10 @@
 #include <Windows.h>
 
 #include "../_lib/safeLock.h"
+#include "./character.h"
 
 #include <map>
+#include <list>
 
 using namespace std;
 
@@ -18,7 +20,7 @@ private:
     Lock _lock;
 
     int _id{0};
-    map<int, Character*> _characterMap{};
+    map<INT64, Character*> _characterMap{};
 
 public:
     Zone() {}
@@ -31,12 +33,12 @@ public:
 
     void OnRegistCharacter(Character* character);
     void OnUnregistCharacter(Character* character);
+
     size_t GetCharacterCount() { return _characterMap.size(); }
+    size_t GetCharacterDbList(list<CharacterDbData>& characterDbList, INT64 exceptToken = 0);
 
     void PacketBroadcast(char* sendBuffer, DWORD sendBufferSize);
 };
-
-
 
 //
 #endif //__ZONE_H__
