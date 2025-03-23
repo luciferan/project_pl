@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef __SAFELOCK_H__
 #define __SAFELOCK_H__
 
@@ -81,6 +81,43 @@ public:
         } else {
             _writeLock.unlock();
         }
+    }
+};
+
+class ReadLock
+{
+private:
+    Lock& _lock;
+
+    bool _readOnly{false};
+    shared_lock<shared_mutex> _readLock;
+
+public:
+    ReadLock(Lock& lock) : _lock(lock), _readLock(_lock.Get(), defer_lock_t{})
+    {
+        _readLock.lock();
+    }
+    ~ReadLock()
+    {
+        _readLock.unlock();
+    }
+};
+
+class WriteLock
+{
+private:
+    Lock& _lock;
+
+    unique_lock<shared_mutex> _writeLock;
+
+public:
+    WriteLock(Lock& lock) : _lock(lock), _writeLock(_lock.Get(), defer_lock_t{})
+    {
+        _writeLock.lock();
+    }
+    ~WriteLock()
+    {
+        _writeLock.unlock();
     }
 };
 #endif //__MUTEX_LOCK_
