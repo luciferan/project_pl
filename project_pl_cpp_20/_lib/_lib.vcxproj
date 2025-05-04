@@ -144,7 +144,7 @@
     <ClCompile Include="MySQL.cpp" />
     <ClCompile Include="object_pool_mgr.cpp" />
     <ClCompile Include="command_unit_base.cpp" />
-    <ClCompile Include="safeLock.cpp" />
+    <ClCompile Include="safe_lock.cpp" />
     <ClCompile Include="util_common.cpp" />
     <ClCompile Include="util_file.cpp" />
     <ClCompile Include="util_string.cpp" />
@@ -157,7 +157,7 @@
     <ClInclude Include="MySQL.h" />
     <ClInclude Include="object_pool_mgr.h" />
     <ClInclude Include="command_unit_base.h" />
-    <ClInclude Include="safeLock.h" />
+    <ClInclude Include="safe_lock.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="util_common.h" />
     <ClInclude Include="util_file.h" />

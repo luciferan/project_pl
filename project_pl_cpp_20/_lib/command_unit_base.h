@@ -2,14 +2,14 @@
 #ifndef __COMMAND_UNIT_BASE_H__
 #define __COMMAND_UNIT_BASE_H__
 
-#include "./safeLock.h"
+#include "./safe_lock.h"
 
 #include <functional>
 #include <vector>
 
 using namespace std;
 
-enum class ECommandUnitPriority
+enum class eCommandUnitPriority
 {
     Low = 0,
     Normal,
@@ -20,10 +20,10 @@ enum class ECommandUnitPriority
 class CommandUnitBase
 {
 private:
-    ECommandUnitPriority _priority;
+    eCommandUnitPriority _priority;
 
 public:
-    CommandUnitBase(ECommandUnitPriority priority)
+    CommandUnitBase(eCommandUnitPriority priority)
         : _priority(priority)
     {
     }
@@ -40,7 +40,7 @@ private:
 
 public:
     DynamicCommandUnit(const Operation& operation)
-        : CommandUnitBase(ECommandUnitPriority::Normal)
+        : CommandUnitBase(eCommandUnitPriority::Normal)
         , _operation(operation)
     {
     }

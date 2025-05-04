@@ -59,7 +59,7 @@ bool App::Stop()
     }
 
     _threadStop.request_stop();
-    CRecvPacketQueue::GetInstance().ForceActivateQueueEvent();
+    RecvPacketQueue::GetInstance().ForceActivateQueueEvent();
 
     return true;
 }
@@ -70,12 +70,12 @@ unsigned int App::ProcessThread(stop_token token)
     _threadSuspended.wait(1);
 
     Network& net{Network::GetInstance()};
-    CRecvPacketQueue& recvPacketQueue{CRecvPacketQueue::GetInstance()};
+    RecvPacketQueue& recvPacketQueue{RecvPacketQueue::GetInstance()};
     UserSessionMgr& sessionMgr{UserSessionMgr::GetInstance()};
 
     Connector* pConnector{nullptr};
     UserSession* pUserSession{nullptr};
-    CPacketStruct* pPacket{nullptr};
+    PacketStruct* pPacket{nullptr};
 
     DWORD dwPacketSize{0};
 
@@ -87,8 +87,8 @@ unsigned int App::ProcessThread(stop_token token)
             continue;
         }
 
-        sPacketHead* pHead = (sPacketHead*)pPacket->_pBuffer;
-        sPacketTail* pTail = (sPacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(sPacketTail));
+        PacketHead* pHead = (PacketHead*)pPacket->_pBuffer;
+        PacketTail* pTail = (PacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(PacketTail));
         if (PACKET_CHECK_TAIL_KEY != pTail->dwCheckTail) {
             LogError("invalid packet");
             net.Disconnect(pConnector);
@@ -103,7 +103,7 @@ unsigned int App::ProcessThread(stop_token token)
         if (pUserSession = (UserSession*)pConnector->GetParam()) {
             pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
         } else {
-            sPacketHead* pHeader = (sPacketHead*)pPacket->_pBuffer;
+            PacketHead* pHeader = (PacketHead*)pPacket->_pBuffer;
             if ((PacketTypeS2C)pHeader->dwProtocol == PacketTypeS2C::auth_result) {
                 //if (pUserSession = sessionMgr.GetFreeObject()) {
                 //    pConnector->SetParam((void*)pUserSession);
@@ -182,7 +182,7 @@ unsigned int App::CommandThread(stop_token token)
         vector<string> cmdTokens{};
         TokenizeA(cmdStr, cmdTokens, " ");
         if (0 == strncmp(cmdTokens[0].c_str(), "/connect", cmdTokens[0].length())) {
-            if( !pConnector) {
+            if (!pConnector) {
                 Log(format(L"info: try connect: {} {}", wszHostIP, wHostPort));
                 if (pConnector = net.Connect(wszHostIP, wHostPort)) {
                     Log("info: connected");

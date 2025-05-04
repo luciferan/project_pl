@@ -42,8 +42,8 @@ bool App::Stop()
     _threadStop.request_stop();
 
     Network::GetInstance().Stop();
-    CRecvPacketQueue::GetInstance().ForceActivateQueueEvent();
-    CSendPacketQueue::GetInstance().ForceActivateQueueEvent();
+    RecvPacketQueue::GetInstance().ForceActivateQueueEvent();
+    SendPacketQueue::GetInstance().ForceActivateQueueEvent();
 
     for (auto& t : _threads) {
         t.join();
@@ -75,13 +75,13 @@ unsigned int App::ProcessThread(stop_token token)
         return 1;
     }
 
-    CRecvPacketQueue& RecvPacketQueue{CRecvPacketQueue::GetInstance()};
-    CSendPacketQueue& SendPacketQueue{CSendPacketQueue::GetInstance()};
+    RecvPacketQueue& RecvPacketQueue{RecvPacketQueue::GetInstance()};
+    SendPacketQueue& SendPacketQueue{SendPacketQueue::GetInstance()};
     UserSessionMgr& userSessionMgr{UserSessionMgr::GetInstance()};
 
     Connector* pConnector{nullptr};
     UserSession* pUserSession{nullptr};
-    CPacketStruct* pPacket{nullptr};
+    PacketStruct* pPacket{nullptr};
 
     DWORD dwPacketSize{0};
 
@@ -93,8 +93,8 @@ unsigned int App::ProcessThread(stop_token token)
             continue;
         }
 
-        sPacketHead* pHead = (sPacketHead*)pPacket->_pBuffer;
-        sPacketTail* pTail = (sPacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(sPacketTail));
+        PacketHead* pHead = (PacketHead*)pPacket->_pBuffer;
+        PacketTail* pTail = (PacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(PacketTail));
         if (PACKET_CHECK_TAIL_KEY != pTail->dwCheckTail) {
             Log("Invliad packet");
             net.Disconnect(pConnector);
@@ -111,7 +111,7 @@ unsigned int App::ProcessThread(stop_token token)
             //CPerformanceCheck(L"ProcessThread(): UserSession::MessageProcess()");
             pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
         } else {
-            sPacketHead* pHeader = (sPacketHead*)pPacket->_pBuffer;
+            PacketHead* pHeader = (PacketHead*)pPacket->_pBuffer;
             if ((PacketTypeC2S)pHeader->dwProtocol == PacketTypeC2S::auth) {
                 //SafeLock lock(userSessionMgr._Lock);
 

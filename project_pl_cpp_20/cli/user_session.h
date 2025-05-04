@@ -6,7 +6,7 @@
 
 #include "../_framework/_common.h"
 #include "../_framework/character_base.h"
-#include "../_lib/safeLock.h"
+#include "../_lib/safe_lock.h"
 
 #include "./packet_cli.h"
 

@@ -19,7 +19,8 @@ using namespace std;
 
 //
 class Connector;
-class CNetworkBuffer;
+class NetworkBuffer;
+struct OverlappedEx;
 
 struct HostInfo
 {
@@ -30,7 +31,10 @@ struct HostInfo
 struct NetworkConfig
 {
     int workerThreadCount{4};
+
     bool doListen{true};
+    bool useAcceptEx{true};
+    int nAcceptPrepareCount{10};
 
     HostInfo listenInfo;
 };
@@ -71,9 +75,9 @@ public:
     bool Start();
     bool Stop();
 
-    unsigned int WorkerThread(stop_token token);
-    unsigned int AcceptThread(stop_token token);
-    unsigned int UpdateThread(stop_token token);
+    eResultCode WorkerThread(stop_token token);
+    eResultCode AcceptThread(stop_token token);
+    eResultCode UpdateThread(stop_token token);
 
     eResultCode DoUpdate(INT64 biCurrTime);
 
@@ -82,10 +86,16 @@ public:
     bool Disconnect(Connector* pConnector);
     void Disconnect(SOCKET socket);
 
+    bool InitListenSocket();
+
+    void AcceptPrepare(int nCount);
+    void AcceptPrepare();
+
     eResultCode Write(Connector* pConnector, char* pSendData, int iSendDataSize);
 
-    void DoSend(Connector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwSendCompleteSize);
-    void DoRecv(Connector* pConnector, CNetworkBuffer* pNetworkBuffer, DWORD dwRecvCompleteSize);
+    void DoAccept(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD dwSendCompleteSize);
+    void DoRecv(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD dwRecvCompleteSize);
+    void DoSend(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD dwSendCompleteSize);
 };
 
 //

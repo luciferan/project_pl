@@ -1,0 +1,62 @@
+﻿
+- class, struct
+접두사를 붙이지 않는다
+파스칼 표기법을 쓴다
+class ClassName
+struct StructName
+
+
+- class, struct의 인스턴스
+카멜표기법을 쓴다
+ClassName className;
+StructName structName;
+
+
+- enum
+접두 e로 시작한다
+접두문자를 제외하면 파스칼 표기법을 쓴다
+enum eEnumName : unsigned int
+
+eEnumName enumName;
+
+
+- 변수 타입에 따른 접두문자
+int: i
+unsigned int: ui
+int (음수를 쓰지 않을거라는 가정), size_t: n
+long: l
+short: s
+int8: i8
+int16: i16
+int32: i32
+int64: bi, i64
+WORD: w
+DWORD: dw
+float: f
+double: d
+bool: b
+BOOL: b
+string: str
+wstring: wstr
+char: c
+BYTE: by
+pointer: p
+HANDLE: h
+
+
+- 클래스의 멤버변수
+접두 _로 시작한다
+접두문자를 제외하면 파스칼 표기법을 쓴다
+int _iMemberVariable;
+byte _byMemberVariable;
+
+
+- 구조체의 멤버변수
+접두 없음
+int iMemberVariable;
+byte byMemberVariable;
+
+
+- 파일명
+스네이크 표기법을 쓴다
+file_name.cpp

@@ -5,7 +5,7 @@
 #include "../_lib/util.h"
 
 //
-int DefaultDataParser(CCircleBuffer &buffer)
+int DefaultDataParser(CircleBuffer &buffer)
 {
     int nPacketLength = 0;
     buffer.Read((char*)&nPacketLength, sizeof(int));

@@ -4,7 +4,7 @@
 
 #include <Windows.h>
 
-#include "../_lib/safeLock.h"
+#include "../_lib/safe_lock.h"
 #include "./character.h"
 
 #include <map>

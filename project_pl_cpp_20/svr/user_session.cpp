@@ -102,12 +102,12 @@ void UserSession::DoUpdate(SafeLock& mgrLock, INT64 biCurrTime)
 
 bool UserSession::MessageProcess(char* pData, int nLen)
 {
-    if (sizeof(sPacketHead) > nLen) {
+    if (sizeof(PacketHead) > nLen) {
         return false;
     }
 
-    sPacketHead* pHeader = (sPacketHead*)pData;
-    DWORD dwPackethLength = pHeader->dwLength - sizeof(sPacketHead) - sizeof(sPacketTail);
+    PacketHead* pHeader = (PacketHead*)pData;
+    DWORD dwPackethLength = pHeader->dwLength - sizeof(PacketHead) - sizeof(PacketTail);
     DWORD dwProtocol = pHeader->dwProtocol;
     char* pPacketData = (char*)(pHeader + 1);
 

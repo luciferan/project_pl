@@ -53,43 +53,55 @@ void PerformanceLog(const string& str)
 }
 
 //
-CLog g_Log;
-CLog g_PerformanceLog;
+FileLogger g_Log;
+FileLogger g_PerformanceLog;
 
 const WCHAR* pwcsLogFilePath{L"log"};
 
 //
-CLog::CLog()
+FileLogger::FileLogger()
 {
     CreateDirectoryW(pwcsLogFilePath, NULL);
     _wstrFileName = GetFileName();
 }
 
-CLog::~CLog()
+FileLogger::~FileLogger()
 {
+    Flush();
 }
 
-bool CLog::Set(wstring wstrFileName)
+bool FileLogger::Set(wstring wstrFileName)
 {
     _wstrFileName = wstrFileName;
     return true;
 }
 
-void CLog::Write(const std::wstring& wstr)
+void FileLogger::Write(const string& str)
 {
     CTimeSet CurrTime;
-    //wprintf(L"%d:%d:%d %s\n", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), wstr.c_str());
-    wstring wstrLogText = FormatW(L"%02d:%02d:%02d %s", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), wstr.c_str());
-    FileWrite(wstrLogText.c_str());
-    wprintf(L"%s\n", wstrLogText.c_str());
+    wstring wstrLogText = FormatW(L"%02d:%02d:%02d %hs", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), str.c_str());
+
+    AddMessage(wstrLogText);
+    ConsoleWrite(wstrLogText);
 
     //
     return;
 }
 
-void CLog::Write(const WCHAR* pFormat, ...)
+void FileLogger::Write(const std::wstring& wstr)
 {
-    //WCHAR buffer[MAX_LEN_LOG_STRING + 1] = { 0, };
+    CTimeSet CurrTime;
+    wstring wstrLogText = FormatW(L"%02d:%02d:%02d %s", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), wstr.c_str());
+
+    AddMessage(wstrLogText);
+    ConsoleWrite(wstrLogText);
+
+    //
+    return;
+}
+
+void FileLogger::Write(const WCHAR* pFormat, ...)
+{
     WCHAR* pwcsBuffer = new WCHAR[MAX_LEN_LOG_STRING + 1];
     memset(pwcsBuffer, 0, sizeof(pwcsBuffer));
 
@@ -100,49 +112,71 @@ void CLog::Write(const WCHAR* pFormat, ...)
 
     //
     CTimeSet CurrTime;
-    //wprintf(L"%d:%d:%d %s\n", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), buffer);
     wstring wstrLogText = FormatW(L"%02d:%02d:%02d %s", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), pwcsBuffer);
-    FileWrite(wstrLogText.c_str());
-    wprintf(L"%s\n", wstrLogText.c_str());
+
+    AddMessage(wstrLogText);
+    ConsoleWrite(wstrLogText);
 
     //
     return;
 }
 
-void CLog::Write(const string& str)
+void FileLogger::AddMessage(const std::wstring& wstr)
 {
-    CTimeSet CurrTime;
-    //wprintf(L"%d:%d:%d %s\n", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), wstr.c_str());
-    wstring wstrLogText = FormatW(L"%02d:%02d:%02d %hs", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), str.c_str());
-    FileWrite(wstrLogText.c_str());
-    wprintf(L"%s\n", wstrLogText.c_str());
+    if (_maxQueueSize <= 1) {
+        return FileWrite(wstr.c_str());
+    }
 
-    //
-    return;
+    {
+        SafeLock msgLock(_msgLock);
+        _msgQueue.push_back(wstr);
+    }
+
+    Flush();
 }
 
-void CLog::ConsoleWrite(const WCHAR* pwcsLogText)
+void FileLogger::Flush(bool bForce /*= false*/)
 {
-    wprintf(L"%s\n", pwcsLogText);
+    if (bForce == false && _msgQueue.size() < _maxQueueSize) {
+        return;
+    }
+
+    list<wstring> list{};
+    {
+        SafeLock msgLock(_msgLock);
+        list.swap(_msgQueue);
+    }
+
+    SafeLock fileLock(_fileLock);
+    FileWrite(fileLock, list);
 }
 
-void CLog::FileWrite(const WCHAR* pwcsLogText)
+void FileLogger::ConsoleWrite(const wstring& wstr)
+{
+    wprintf(L"%s\n", wstr.c_str());
+}
+
+void FileLogger::FileWrite(const wstring& wstr)
+{
+    SafeLock lock(_fileLock);
+    FileWrite(lock, list<wstring>{wstr});
+}
+
+void FileLogger::FileWrite(SafeLock& lock, const list<wstring> &list)
 {
     CTimeSet CurrTime;
     wstring wstrFileName{};
 
-    SafeLock lock(_FileLock);
-
     switch (_eDivideType) {
-        case eLogDivideType::Day:
-            wstrFileName = FormatW(L"%s\\%s_%04d-%02d-%02d.log", pwcsLogFilePath, _wstrFileName.c_str(), CurrTime.GetYear(), CurrTime.GetMonth(), CurrTime.GetDay());
-            break;
-        case eLogDivideType::Hour:
-            wstrFileName = FormatW(L"%s\\%s_%04d-%02d-%02d_%02d.log", pwcsLogFilePath, _wstrFileName.c_str(), CurrTime.GetYear(), CurrTime.GetMonth(), CurrTime.GetDay(), CurrTime.GetHour());
-            break;
-        case eLogDivideType::Min:
-            wstrFileName = FormatW(L"%s\\%s_%04d-%02d-%02d_%02d-%02d.log", pwcsLogFilePath, _wstrFileName.c_str(), CurrTime.GetYear(), CurrTime.GetMonth(), CurrTime.GetDay(), CurrTime.GetHour(), CurrTime.GetMin());
-            break;
+    case eLogDivideType::Day:
+        wstrFileName = FormatW(L"%s\\%s_%04d-%02d-%02d.log", pwcsLogFilePath, _wstrFileName.c_str(), CurrTime.GetYear(), CurrTime.GetMonth(), CurrTime.GetDay());
+        break;
+    case eLogDivideType::Hour:
+        wstrFileName = FormatW(L"%s\\%s_%04d-%02d-%02d_%02d.log", pwcsLogFilePath, _wstrFileName.c_str(), CurrTime.GetYear(), CurrTime.GetMonth(), CurrTime.GetDay(), CurrTime.GetHour());
+        break;
+    case eLogDivideType::Min:
+        wstrFileName = FormatW(L"%s\\%s_%04d-%02d-%02d_%02d-%02d.log", pwcsLogFilePath, _wstrFileName.c_str(), CurrTime.GetYear(), CurrTime.GetMonth(), CurrTime.GetDay(), CurrTime.GetHour(), CurrTime.GetMin());
+        break;
     }
 
     //
@@ -152,19 +186,21 @@ void CLog::FileWrite(const WCHAR* pwcsLogText)
     if (0 != error) {
         error = _wfopen_s(&pFile, wstrFileName.c_str(), L"w");
         if (0 != error) {
-            ConsoleWrite(FormatW(L"error: CLog::FileWrite(): log file open fail %d", error).c_str());
+            ConsoleWrite(FormatW(L"error: FileLogger::FileWrite(): log file open fail %d", error).c_str());
             return;
         }
     } else {
         error = _wfopen_s(&pFile, wstrFileName.c_str(), L"a");
         if (0 != error) {
-            ConsoleWrite(FormatW(L"error: CLog::FileWrite(): log file open fail %d", error).c_str());
+            ConsoleWrite(FormatW(L"error: FileLogger::FileWrite(): log file open fail %d", error).c_str());
             return;
         }
     }
 
     if (pFile) {
-        fwprintf_s(pFile, L"%s\n", pwcsLogText);
+        for (wstring wstr : list) {
+            fwprintf_s(pFile, L"%s\n", wstr.c_str());
+        }
         fclose(pFile);
     }
 }

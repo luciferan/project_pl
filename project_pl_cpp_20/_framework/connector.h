@@ -5,7 +5,7 @@
 #include "./_common.h"
 
 #include "../_lib/util_string.h"
-#include "../_lib/safeLock.h"
+#include "../_lib/safe_lock.h"
 #include "../_lib/log.h"
 
 #include "./buffer.h"
@@ -18,15 +18,32 @@
 using namespace std;
 
 //
+enum class eNetworkOperator : unsigned char
+{
+    OP_SEND = 1,
+    OP_RECV = 2,
+    OP_ACCEPT = 3,
+};
+
 class Connector;
-struct OVERLAPPED_EX
+struct OverlappedEx
 {
     OVERLAPPED overlapped{};
     Connector* pConnector{nullptr};
-    CNetworkBuffer* pBuffer{nullptr};
+    eNetworkOperator NetOp{eNetworkOperator::OP_SEND};
 
-    //
     void ResetOverlapped() { memset(&overlapped, 0, sizeof(OVERLAPPED)); }
+    eNetworkOperator GetOperator() { return NetOp; }
+};
+
+struct SendOverlapped : public OverlappedEx
+{
+    NetworkBuffer* pBuffer{nullptr};
+};
+
+struct RecvOverlapped : public OverlappedEx
+{
+    unique_ptr<NetworkBuffer> pBuffer = make_unique<NetworkBuffer>();
 };
 
 class Connector
@@ -44,16 +61,16 @@ private:
     WORD _wPort{0};
 
     // send
-    OVERLAPPED_EX _SendRequest;
+    SendOverlapped _SendRequest;
     Lock _SendQueueLock;
-    queue<CNetworkBuffer*> _SendQueue{}; // 여기있는걸 send 합니다. 최대 갯수를 넘어가면 전송량에 비해 보내야되는 패킷이 많은것
+    queue<NetworkBuffer*> _SendQueue{}; // 여기있는걸 send 합니다. 최대 갯수를 넘어가면 전송량에 비해 보내야되는 패킷이 많은것
     DWORD _dwSendRef{0};
 
     // recv
-    OVERLAPPED_EX _RecvRequest;
-    CCircleBuffer _RecvDataBuffer; // recv 받으면 여기에 쌓습니다. 오버되면 연결을 터트립니다.
+    RecvOverlapped _RecvRequest;
+    CircleBuffer _RecvDataBuffer; // recv 받으면 여기에 쌓습니다. 오버되면 연결을 터트립니다.
     DWORD _dwRecvRef{0};
-    int (*funcDataParser)(CCircleBuffer& buffer) { nullptr };
+    int (*funcDataParser)(CircleBuffer& buffer) { nullptr };
 
     //
     INT64 _biUpdateTimer{0};
@@ -115,7 +132,7 @@ public:
     // recv
     int RecvPrepare(); //ret: recv buffer size
     int RecvComplete(DWORD dwRecvSize); // ret: recvdatabuffer.getdatasize
-    void SetDataParser(int (*funcDataParserPtr)(CCircleBuffer& buffer)) { funcDataParser = funcDataParserPtr; }
+    void SetDataParser(int (*funcDataParserPtr)(CircleBuffer& buffer)) { funcDataParser = funcDataParserPtr; }
     int DataParser();
     int DataParsing();
 
@@ -124,6 +141,9 @@ public:
     DWORD IncRecvRef() { InterlockedIncrement(&_dwRecvRef); return _dwRecvRef; }
     DWORD DecRecvRef() { InterlockedDecrement(&_dwRecvRef); return _dwRecvRef; }
     DWORD GetRecvRef() { return _dwRecvRef; }
+
+    // accept
+    int AcceptPrepare();
 
     //
     bool CheckUpdateTimer(INT64 biCurrTime) { return (_biUpdateTimer < biCurrTime); }
@@ -134,7 +154,7 @@ public:
     wstring GetReport();
 };
 
-int DefaultDataParser(CCircleBuffer& buffer);
+int DefaultDataParser(CircleBuffer& buffer);
 
 //
 #endif //__CONNECTOR_H__

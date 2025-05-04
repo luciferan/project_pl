@@ -5,7 +5,7 @@
 #include "./_common.h"
 #include "./buffer.h"
 
-#include "../_lib/SafeLock.h"
+#include "../_lib/safe_lock.h"
 
 #include <unordered_map>
 #include <list>
@@ -20,36 +20,36 @@ enum ePacketDataQueue
 };
 
 //
-class CPacketStruct
-    : public CBuffer
+class PacketStruct
+    : public BufferBase
 {
 public:
     Connector* pConnector{nullptr};
 
 public:
-    CPacketStruct() {};
-    virtual ~CPacketStruct() {};
+    PacketStruct() {};
+    virtual ~PacketStruct() {};
 };
 
 //
-class CPacketDataQueue
+class PacketDataQueue
 {
 protected:
     Lock _cs[ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1];
     HANDLE _hQueueEvent[ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1]{INVALID_HANDLE_VALUE,};
 
-    list<CPacketStruct*> lstPacketQueue[ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1]{};
+    list<PacketStruct*> lstPacketQueue[ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1]{};
 
     //
 public:
-    CPacketDataQueue()
+    PacketDataQueue()
     {
         for (auto idx = 0; idx < ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1; ++idx) {
             _hQueueEvent[idx] = CreateEvent(0, 0, 0, 0);
             lstPacketQueue[idx].clear();
         }
     }
-    virtual ~CPacketDataQueue()
+    virtual ~PacketDataQueue()
     {
         for (auto idx = 0; idx < ePacketDataQueue::MAX_PACKET_QUEUE_PHASE + 1; ++idx) {
             CloseHandle(_hQueueEvent[idx]);
@@ -64,7 +64,7 @@ public:
         }
     }
 
-    size_t Push(CPacketStruct* pPacketData, int phase)
+    size_t Push(PacketStruct* pPacketData, int phase)
     {
         if (0 > phase || ePacketDataQueue::MAX_PACKET_QUEUE_PHASE < phase) {
             return -1;
@@ -75,7 +75,7 @@ public:
         return lstPacketQueue[phase].size();
     }
 
-    CPacketStruct* Pop(int phase)
+    PacketStruct* Pop(int phase)
     {
         if (0 > phase || ePacketDataQueue::MAX_PACKET_QUEUE_PHASE < phase) {
             return nullptr;
@@ -84,7 +84,7 @@ public:
             return nullptr;
         }
 
-        CPacketStruct* pData(nullptr);
+        PacketStruct* pData(nullptr);
 
         SafeLock lock(_cs[phase]);
         auto iter = lstPacketQueue[phase].begin();
@@ -96,21 +96,21 @@ public:
 };
 
 //
-class CRecvPacketQueue
-    : public CPacketDataQueue
+class RecvPacketQueue
+    : public PacketDataQueue
 {
 private:
-    CRecvPacketQueue() {};
-    ~CRecvPacketQueue() {};
+    RecvPacketQueue() {};
+    ~RecvPacketQueue() {};
 
 public:
-    static CRecvPacketQueue& GetInstance()
+    static RecvPacketQueue& GetInstance()
     {
-        static CRecvPacketQueue* pInstance = new CRecvPacketQueue();
+        static RecvPacketQueue* pInstance = new RecvPacketQueue();
         return *pInstance;
     }
 
-    size_t Push(CPacketStruct* pPacketData, int phase = 0)
+    size_t Push(PacketStruct* pPacketData, int phase = 0)
     {
         if (!pPacketData) {
             return -1;
@@ -119,28 +119,28 @@ public:
             return -1;
         }
 
-        auto nDataSize = CPacketDataQueue::Push(pPacketData, phase);
+        auto nDataSize = PacketDataQueue::Push(pPacketData, phase);
         SetEvent(_hQueueEvent[phase]);
         return nDataSize;
     }
 
-    CPacketStruct* Pop(int phase = 0)
+    PacketStruct* Pop(int phase = 0)
     {
         if (0 > phase || ePacketDataQueue::MAX_PACKET_QUEUE_PHASE <= phase) {
             return nullptr;
         }
 
-        CPacketStruct* pPacket = CPacketDataQueue::Pop(phase);
+        PacketStruct* pPacket = PacketDataQueue::Pop(phase);
         if (!pPacket) {
             WaitForSingleObject(_hQueueEvent[phase], INFINITE);
-            pPacket = CPacketDataQueue::Pop(phase);
+            pPacket = PacketDataQueue::Pop(phase);
         }
         return pPacket;
     }
 
-    CPacketStruct* GetFreePacketStruct()
+    PacketStruct* GetFreePacketStruct()
     {
-        CPacketStruct* pPacket = new CPacketStruct;
+        PacketStruct* pPacket = new PacketStruct;
         if (!pPacket) {
             return nullptr;
         }
@@ -148,7 +148,7 @@ public:
         return pPacket;
     }
 
-    void ReleasePacketStruct(CPacketStruct* pPacket)
+    void ReleasePacketStruct(PacketStruct* pPacket)
     {
         if (pPacket) {
             delete pPacket;
@@ -158,36 +158,36 @@ public:
 };
 
 //
-class CSendPacketQueue
-    : public CPacketDataQueue
+class SendPacketQueue
+    : public PacketDataQueue
 {
 private:
-    CSendPacketQueue() {}
-    ~CSendPacketQueue() {}
+    SendPacketQueue() {}
+    ~SendPacketQueue() {}
 
 public:
-    static CSendPacketQueue& GetInstance()
+    static SendPacketQueue& GetInstance()
     {
-        static CSendPacketQueue* pInstance = new CSendPacketQueue();
+        static SendPacketQueue* pInstance = new SendPacketQueue();
         return *pInstance;
     }
 
-    size_t Push(CPacketStruct* pPacketData)
+    size_t Push(PacketStruct* pPacketData)
     {
         if (!pPacketData) {
             return -1;
         }
-        auto nDataSize = CPacketDataQueue::Push(pPacketData, 0);
+        auto nDataSize = PacketDataQueue::Push(pPacketData, 0);
         SetEvent(_hQueueEvent[0]);
         return nDataSize;
     }
 
-    CPacketStruct* Pop()
+    PacketStruct* Pop()
     {
-        CPacketStruct* pPacket = CPacketDataQueue::Pop(0);
+        PacketStruct* pPacket = PacketDataQueue::Pop(0);
         if (!pPacket) {
             WaitForSingleObject(_hQueueEvent[0], INFINITE);
-            pPacket = CPacketDataQueue::Pop(0);
+            pPacket = PacketDataQueue::Pop(0);
         }
         return pPacket;
     }

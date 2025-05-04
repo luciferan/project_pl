@@ -30,7 +30,7 @@ private:
     //
 public:
     SendBroadcastToAllUser(int zoneId, PacketBaseS2C* packetData, DWORD packetSize)
-        : CommandUnitBase(ECommandUnitPriority::Normal)
+        : CommandUnitBase(eCommandUnitPriority::Normal)
         , _zoneId(zoneId)
     {
         MakeNetworkPacket((DWORD)packetData->type, (char*)packetData, packetSize, _sendBuffer, _sendBufferSize);
@@ -47,13 +47,13 @@ private:
 
 public:
     SendPacketToUser(INT64 token, PacketBaseS2C* packetData, DWORD packetSize)
-        : CommandUnitBase(ECommandUnitPriority::Normal)
+        : CommandUnitBase(eCommandUnitPriority::Normal)
         , _token(token)
     {
         MakeNetworkPacket((DWORD)packetData->type, (char*)packetData, packetSize, _sendBuffer, _sendBufferSize);
     }
     SendPacketToUser(INT64 token, char* sendBuffer, DWORD sendBufferSize)
-        : CommandUnitBase(ECommandUnitPriority::Normal)
+        : CommandUnitBase(eCommandUnitPriority::Normal)
         , _token(token)
     {
         memcpy_s(_sendBuffer, MAX_PACKET_BUFFER_SIZE, sendBuffer, sendBufferSize);
@@ -72,7 +72,7 @@ private:
 
 public:
     EnterCharacter(INT64 token, int zoneId, int posX, int posY)
-        : CommandUnitBase(ECommandUnitPriority::Normal)
+        : CommandUnitBase(eCommandUnitPriority::Normal)
         , _zoneId(zoneId), _token(token), _posX(posX), _posY(posY)
     {
     }
@@ -87,7 +87,7 @@ private:
 
 public:
     LeaveCharacter(INT64 token, int zoneId)
-        : CommandUnitBase(ECommandUnitPriority::Normal)
+        : CommandUnitBase(eCommandUnitPriority::Normal)
         , _zoneId(zoneId), _token(token)
     {
     }
@@ -102,7 +102,7 @@ private:
 
 public:
     SendCharacterList(INT64 exceptCharacterToken, int zoneId)
-        : CommandUnitBase(ECommandUnitPriority::Normal)
+        : CommandUnitBase(eCommandUnitPriority::Normal)
         , _exceptCharacterToken(exceptCharacterToken), _zoneId(zoneId)
     {
     }

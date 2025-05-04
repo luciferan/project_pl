@@ -4,7 +4,7 @@
 
 #include "./_common.h"
 
-#include "../_lib/safeLock.h"
+#include "../_lib/safe_lock.h"
 
 #include <string>
 
@@ -15,7 +15,7 @@ class Connector;
 static const int MAX_PACKET_BUFFER_SIZE = 1024 * 10;
 
 //
-class CBuffer
+class BufferBase
 {
 public:
     char* _pBuffer{nullptr};
@@ -31,7 +31,7 @@ protected:
 
     //
 public:
-    CBuffer(ULONG size = MAX_PACKET_BUFFER_SIZE)
+    BufferBase(ULONG size = MAX_PACKET_BUFFER_SIZE)
     {
         _pHead = _pBuffer = new char[size + 1];
         _pTail = &_pBuffer[size];
@@ -41,7 +41,7 @@ public:
         _nDataSize = 0;
     }
 
-    virtual ~CBuffer()
+    virtual ~BufferBase()
     {
         _nBufferSize = _nDataSize = 0;
         _pHead = _pTail = _pRead = _pWrite = nullptr;
@@ -66,15 +66,15 @@ public:
 };
 
 //
-class CCircleBuffer
-    : public CBuffer
+class CircleBuffer
+    : public BufferBase
 {
 private:
     Lock _lock;
 
 public:
-    CCircleBuffer() {}
-    virtual ~CCircleBuffer() {}
+    CircleBuffer() {}
+    virtual ~CircleBuffer() {}
 
     ULONG Write(char IN* pSrc, ULONG IN nLen)
     {
@@ -147,27 +147,19 @@ public:
 };
 
 //
-enum class eNetworkBuffer : unsigned char
-{
-    OP_SEND = 1,
-    OP_RECV = 2,
-};
-
-class CNetworkBuffer
-    : public CBuffer
+class NetworkBuffer
+    : public BufferBase
 {
 public:
-    WSABUF _WSABuffer{0,};
-    eNetworkBuffer _eOperator{eNetworkBuffer::OP_SEND};
+    WSABUF _WSABuffer{0};
     Connector* _pConnector{nullptr};
 
     //
 public:
-    CNetworkBuffer() {}
-    virtual ~CNetworkBuffer() {}
+    NetworkBuffer() {}
+    virtual ~NetworkBuffer() {}
 
     WSABUF& GetWSABuffer() { return _WSABuffer; }
-    eNetworkBuffer GetOperator() { return _eOperator; }
 
     int SetSendData(Connector* pConnector, char* pData, UINT32 nDataSize)
     {
@@ -180,7 +172,6 @@ public:
 
         _WSABuffer.buf = _pBuffer;
         _WSABuffer.len = _nDataSize;
-        _eOperator = eNetworkBuffer::OP_SEND;
         _pConnector = pConnector;
 
         return _nDataSize;
@@ -192,7 +183,17 @@ public:
 
         _WSABuffer.buf = _pBuffer;
         _WSABuffer.len = _nBufferSize;
-        _eOperator = eNetworkBuffer::OP_RECV;
+        _pConnector = pConnector;
+
+        return _nBufferSize;
+    }
+
+    int SetAcceptData(Connector* pConnector)
+    {
+        _nDataSize = 0;
+
+        _WSABuffer.buf = _pBuffer;
+        _WSABuffer.len = _nBufferSize;
         _pConnector = pConnector;
 
         return _nBufferSize;

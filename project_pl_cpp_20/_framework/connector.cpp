@@ -20,8 +20,10 @@ void Connector::Release()
         _socket = INVALID_SOCKET;
     }
 
-    SAFE_DELETE(_RecvRequest.pBuffer);
-    SAFE_DELETE(_SendRequest.pBuffer);
+    if (_SendRequest.pBuffer) {
+        delete _SendRequest.pBuffer;
+        _SendRequest.pBuffer = nullptr;
+    }
 }
 
 void Connector::TryRelease()
@@ -91,7 +93,7 @@ eResultCode Connector::AddSendData(char* pSendData, DWORD dwSendDataSize)
 
 int Connector::AddSendQueue(char* pSendData, DWORD dwSendDataSize)
 {
-    CNetworkBuffer* pSendBuffer = new CNetworkBuffer;
+    NetworkBuffer* pSendBuffer = new NetworkBuffer;
     if (!pSendBuffer) {
         return -1;
     }
@@ -119,11 +121,12 @@ int Connector::SendPrepare()
 
     SafeLock lock(_SendQueueLock);
 
-    CNetworkBuffer* pSendData = _SendQueue.front();
+    NetworkBuffer* pSendData = _SendQueue.front();
     _SendQueue.pop();
 
     _SendRequest.ResetOverlapped();
     _SendRequest.pConnector = this;
+    _SendRequest.NetOp = eNetworkOperator::OP_SEND;
     _SendRequest.pBuffer = pSendData;
 
     IncSendRef();
@@ -133,7 +136,7 @@ int Connector::SendPrepare()
 
 int Connector::SendComplete(DWORD dwSendSize)
 {
-    CNetworkBuffer* pBuffer = _SendRequest.pBuffer;
+    NetworkBuffer* pBuffer = _SendRequest.pBuffer;
     if (!pBuffer) {
         return 0;
     }
@@ -157,26 +160,15 @@ int Connector::SendComplete(DWORD dwSendSize)
 
 WSABUF* Connector::GetSendWSABuffer()
 {
-    //if( _SendRequest.pBuffer )
-    //return nullptr;
     return &_SendRequest.pBuffer->_WSABuffer;
 }
 
 int Connector::RecvPrepare()
 {
-    if (!_RecvRequest.pBuffer) {
-        CNetworkBuffer* pBuffer = new CNetworkBuffer;
-        if (!pBuffer) {
-            return 0;
-        }
-
-        _RecvRequest.ResetOverlapped();
-        _RecvRequest.pConnector = this;
-        _RecvRequest.pBuffer = pBuffer;
-    } else {
-        _RecvRequest.ResetOverlapped();
-        _RecvRequest.pBuffer->Reset();
-    }
+    _RecvRequest.ResetOverlapped();
+    _RecvRequest.pConnector = this;
+    _RecvRequest.NetOp = eNetworkOperator::OP_RECV;
+    _RecvRequest.pBuffer->Reset();
 
     int nRet = _RecvRequest.pBuffer->SetRecvData(this);
     if (nRet) {
@@ -205,7 +197,7 @@ int Connector::RecvComplete(DWORD dwRecvSize)
     //int nPacketLength = DataParsing();
     int nPacketLength = DataParser();
     if (0 < nPacketLength) {
-        CPacketStruct* pPacket = CRecvPacketQueue::GetInstance().GetFreePacketStruct();
+        PacketStruct* pPacket = RecvPacketQueue::GetInstance().GetFreePacketStruct();
         if (!pPacket) {
             return -1;
         }
@@ -215,7 +207,7 @@ int Connector::RecvComplete(DWORD dwRecvSize)
         _RecvDataBuffer.Erase(nPacketLength);
 
         //
-        CRecvPacketQueue::GetInstance().Push(pPacket);
+        RecvPacketQueue::GetInstance().Push(pPacket);
     } else {
         return -1;
     }
@@ -235,4 +227,19 @@ int Connector::DataParsing()
 WSABUF* Connector::GetRecvWSABuffer()
 {
     return &_RecvRequest.pBuffer->_WSABuffer;
+}
+
+int Connector::AcceptPrepare()
+{
+    _RecvRequest.ResetOverlapped();
+    _RecvRequest.pConnector = this;
+    _RecvRequest.NetOp = eNetworkOperator::OP_ACCEPT;
+    _RecvRequest.pBuffer->Reset();
+
+    int nRet = _RecvRequest.pBuffer->SetAcceptData(this);
+    if (nRet) {
+        InterlockedIncrement(&_dwRecvRef);
+    }
+
+    return nRet;
 }

@@ -18,21 +18,21 @@ public:
 #pragma pack(pop)
 
 //
-struct sPacketHead
+struct PacketHead
 {
     DWORD dwCheckHead{0};
     DWORD dwLength{0}; // = sizeof(Head) + sizeof(Body) + sizeof(Tail)
     DWORD dwProtocol{0};
 };
 
-struct sPacketTail
+struct PacketTail
 {
     DWORD dwCheckTail{0};
 };
 
 //
 eResultCode MakeNetworkPacket(DWORD IN dwProtocol, char IN* pSendData, DWORD IN dwSendDataSize, char OUT* pSendBuffer, DWORD IN OUT& dwSendBufferSize);
-eResultCode ParseNetworkData(CCircleBuffer IN& Buffer, DWORD OUT& dwPacketLength);
+eResultCode ParseNetworkData(CircleBuffer IN& Buffer, DWORD OUT& dwPacketLength);
 
 // packet handler ---------------------------------------------------------------
 template <class T, class PT>

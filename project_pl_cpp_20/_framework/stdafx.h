@@ -9,6 +9,8 @@
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #include <Windows.h>
+#include <MSWSock.h>
+#include <mstcpip.h>
 
 #include <process.h>
 #include <wchar.h>

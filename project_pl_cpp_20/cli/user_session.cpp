@@ -21,7 +21,7 @@ int UserSession::clear()
 
 eResultCode UserSession::SendPacketData(DWORD dwProtocol, char* pData, DWORD dwSendDataSize)
 {
-    //CNetworkBuffer SendBuffer;
+    //NetworkBuffer SendBuffer;
     char SendBuffer[MAX_PACKET_BUFFER_SIZE]{};
     DWORD dwSendBufferSize = sizeof(SendBuffer);
     MakeNetworkPacket(dwProtocol, pData, dwSendDataSize, (char*)&SendBuffer, dwSendBufferSize);
@@ -90,12 +90,12 @@ int UserSession::DoUpdate(INT64 uiCurrTime)
 
 int UserSession::MessageProcess(char* pData, int nLen)
 {
-    if (sizeof(sPacketHead) > nLen) {
+    if (sizeof(PacketHead) > nLen) {
         return -1;
     }
 
-    sPacketHead* pHeader = (sPacketHead*)pData;
-    DWORD dwPackethLength = pHeader->dwLength - sizeof(sPacketHead) - sizeof(sPacketTail);
+    PacketHead* pHeader = (PacketHead*)pData;
+    DWORD dwPackethLength = pHeader->dwLength - sizeof(PacketHead) - sizeof(PacketTail);
     DWORD dwProtocol = pHeader->dwProtocol;
     char* pPacketData = (char*)(pHeader + 1);
 

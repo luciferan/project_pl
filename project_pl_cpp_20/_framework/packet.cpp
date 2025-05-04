@@ -7,11 +7,11 @@
 //
 eResultCode MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDataSize, char* pSendBuffer, DWORD& dwSendBufferSize)
 {
-    sPacketHead head;
-    sPacketTail tail;
+    PacketHead head;
+    PacketTail tail;
 
     head.dwCheckHead = PACKET_CHECK_HEAD_KEY;
-    head.dwLength = sizeof(sPacketHead) + dwSendDataSize + sizeof(sPacketTail);
+    head.dwLength = sizeof(PacketHead) + dwSendDataSize + sizeof(PacketTail);
     head.dwProtocol = dwProtocol;
 
     tail.dwCheckTail = PACKET_CHECK_TAIL_KEY;
@@ -31,16 +31,16 @@ eResultCode MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDat
     return eResultCode::succ;
 };
 
-eResultCode ParseNetworkData(CCircleBuffer IN& Buffer, DWORD OUT& dwPacketLength)
+eResultCode ParseNetworkData(CircleBuffer IN& Buffer, DWORD OUT& dwPacketLength)
 {
     DWORD dwDataSize = Buffer.GetDataSize();
 
-    if (sizeof(sPacketHead) > dwDataSize) {
+    if (sizeof(PacketHead) > dwDataSize) {
         return eResultCode::pending;
     }
 
-    sPacketHead Head;
-    Buffer.Read((char*)&Head, sizeof(sPacketHead));
+    PacketHead Head;
+    Buffer.Read((char*)&Head, sizeof(PacketHead));
 
     if (PACKET_CHECK_HEAD_KEY != Head.dwCheckHead) {
         return eResultCode::invalid_packet;

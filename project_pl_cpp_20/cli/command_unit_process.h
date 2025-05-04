@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifndef __COMMAND_UNIT_PROCESS_H__
 #define __COMMAND_UNIT_PROCESS_H__
 
@@ -12,7 +12,7 @@ class TestCommandUnit : public CommandUnitBase
 {
 public:
     TestCommandUnit() 
-        : CommandUnitBase(ECommandUnitPriority::Normal) 
+        : CommandUnitBase(eCommandUnitPriority::Normal)
     {
     }
     void Operator();

@@ -26,7 +26,7 @@
     <ClCompile Include="log.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="safeLock.cpp">
+    <ClCompile Include="safe_lock.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="util_common.cpp">
@@ -61,7 +61,7 @@
     <ClInclude Include="log.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="safeLock.h">
+    <ClInclude Include="safe_lock.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="util.h">
