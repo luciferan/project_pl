@@ -1,4 +1,6 @@
-﻿#include "./character.h"
+﻿#include "stdafx.h"
+
+#include "./character.h"
 
 //
 Character* CharacterMgr::EnterCharacter(INT64 token)

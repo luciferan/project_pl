@@ -2,6 +2,7 @@
 
 #include "../_framework/connector.h"
 #include "../_lib/util.h"
+
 #include "./packet_svr.h"
 
 //
@@ -28,7 +29,7 @@ bool Connector::DoUpdate(INT64 biCurrTime)
     //
     if (_biUpdateTimer < biCurrTime) {
         _biUpdateTimer = biCurrTime + MILLISEC_A_MIN;
-        g_PerformanceLog.Write(GetReport());
+        PerformanceLog(GetReport());
 
         return true;
     } else {

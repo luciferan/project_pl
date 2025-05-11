@@ -7,13 +7,12 @@
 #include "../_lib/util.h"
 
 #include "./command_unit_process.h"
+#include "./config.h"
 
 #include <thread>
 #include <atomic>
 #include <list>
-
-//
-//bool LoadConfig();
+#include <string>
 
 //
 class App
@@ -38,6 +37,8 @@ public:
         static App* pInstance = new App;
         return *pInstance;
     }
+
+    bool Init(ConfigLoader& configLoader);
 
     bool Start();
     bool Stop();

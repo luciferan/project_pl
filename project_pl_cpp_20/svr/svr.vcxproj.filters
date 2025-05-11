@@ -38,6 +38,9 @@
     <ClCompile Include="command_unit_process.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="config.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="process.h">
@@ -64,6 +67,16 @@
     <ClInclude Include="stdafx.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="character.h" />
+    <ClInclude Include="character.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\config_svr.json">
+      <Filter>리소스 파일</Filter>
+    </None>
   </ItemGroup>
 </Project>

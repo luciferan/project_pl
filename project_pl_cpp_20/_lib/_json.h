@@ -1,8 +1,7 @@
-#pragma once
+﻿#pragma once
 #ifndef __JSON_H__
 #define __JSON_H__
 
-//
 #include <string>
 #include <vector>
 #include <algorithm>

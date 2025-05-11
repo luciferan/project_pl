@@ -11,7 +11,6 @@ history
 - 네이밍 정리 필요함. 예전 스타일이랑 aa스타일이랑 섞여버림
 
 - 당장은 시간이 없어서 못하겠지만 추가할 내용 정리. 잊어버리기전에
-- acceptex로 변경
 - 서버와 클라의 연결 소켓 추가
 - web소켓 추가
 - sql 연결 추가
@@ -20,7 +19,18 @@ history
 - 동기화서버 추가. 클라-동기화, 클라-서버, 동기화-서버의 트라이앵글 연결
 - 모니터링 추가
 - c#으로 포팅
+- rapidjson이 utf-8 인코딩만 읽을수 있는 문제가 있어서 다른거로 바꿔야할까싶음
 
+#20250511
+- rapidjson 라이브러리를 사용해서 ConfigLoader 추가
+- vs .editorconfig 추가
+
+#20250505
+- lexicon 작성중
+- 일부 파일명 변경, 일부 클래스명 변경
+- eNetworkBuffer를 class NetworkBuffer에서 struct OverlappedEx로 이동. 이름변경
+- AcceptEx 적용
+- FileLog 큐에 모았다가 쓰게 변경
 
 #20250323
 - 새로운 프로젝트를 시작해서 여기까지를 기본코드로 하고 새로운 저장소로 이동

@@ -1,4 +1,6 @@
-﻿#include "../_framework/connector.h"
+﻿#include "stdafx.h"
+
+#include "../_framework/connector.h"
 #include "../_framework/packet.h"
 #include "../_lib/util.h"
 

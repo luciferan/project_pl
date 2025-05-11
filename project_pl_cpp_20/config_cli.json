@@ -1,0 +1,12 @@
+{
+  "id": 1,
+  "user_name": "a01",
+  "user_pass": "1q2w3e",
+
+  "server_info": {
+    "server_info": {
+      "ip": "127.0.0.1",
+      "port": 16101
+    }
+  }
+}

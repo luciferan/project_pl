@@ -44,6 +44,9 @@
     <ClCompile Include="object_pool_mgr.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="config_loader.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="util_time.h">
@@ -80,6 +83,9 @@
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="object_pool_mgr.h">
+      <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="config_loader.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
   </ItemGroup>

@@ -40,7 +40,7 @@ void Connector::TryRelease()
     }
 }
 
-void Connector::SetDomainA(char* pszDomain, WORD wPort)
+void Connector::SetDomainA(const char* pszDomain, WORD wPort)
 {
     strncpy_s(_szDomain, NetworkConst::MAX_LEN_DOMAIN_STRING, pszDomain, _TRUNCATE);
     _wPort = wPort;
@@ -51,7 +51,7 @@ void Connector::SetDomainA(char* pszDomain, WORD wPort)
     return;
 }
 
-void Connector::SetDomain(WCHAR* pwcsDomain, WORD wPort)
+void Connector::SetDomain(const WCHAR* pwcsDomain, WORD wPort)
 {
     wcsncpy_s(_wcsDomain, NetworkConst::MAX_LEN_DOMAIN_STRING, pwcsDomain, wcslen(pwcsDomain));
     _wPort = wPort;

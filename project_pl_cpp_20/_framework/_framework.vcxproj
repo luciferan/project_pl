@@ -39,7 +39,7 @@
     <ClCompile Include="certifyData.cpp" />
     <ClCompile Include="connector.cpp" />
     <ClCompile Include="connector_impl.cpp" />
-    <ClCompile Include="defaultConfig.cpp" />
+    <ClCompile Include="default_config.cpp" />
     <ClCompile Include="network.cpp" />
     <ClCompile Include="network_impl.cpp" />
     <ClCompile Include="packet.cpp" />

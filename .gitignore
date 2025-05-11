@@ -1,5 +1,8 @@
 /project_pl_cpp_20/.vs
+/project_pl_cpp_20/_external
 /project_pl_cpp_20/bin64d
 /project_pl_cpp_20/bin64r
-*.slnLaunch.user
-*.vcxproj.user
+/project_pl_cs_9/.vs
+/project_pl_cs_9/bin
+*.user
+*.log

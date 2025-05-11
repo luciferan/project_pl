@@ -1,0 +1,58 @@
+{
+  "id": 1,
+  "name": "world_01",
+
+  "network_thread": 4,
+
+  "listener": true,
+  "listener_mode": 2,
+  "listener_prepare": 10,
+
+  "client_session": {
+    "server_info": {
+      "ip": "127.0.0.1",
+      "port": 16101
+    }
+  },
+  "stream_session": {
+    "server_info": {
+      "ip": "127.0.0.1",
+      "port": 16201
+    }
+  },
+  "web_session": {
+    "server_info": {
+      "ip": "127.0.0.1",
+      "port": 17001
+    }
+  },
+
+  "db_server": {
+    "id": 1,
+    "server_info": {
+      "ip": "127.0.0.1",
+      "port": 20001
+    }
+  },
+
+  "auth_db_connector": {
+    "id": 1,
+    "database": "auth",
+    "sql_user": "user_pl",
+    "sql_pass": "pass_pl",
+    "server_info": {
+      "ip": "192.168.35.81",
+      "port": 3306
+    }
+  },
+  "world_db_connector": {
+    "id": 1,
+    "database": "world",
+    "sql_user": "user_pl",
+    "sql_pass": "pass_pl",
+    "server_info": {
+      "ip": "192.168.35.81",
+      "port": 3306
+    }
+  }
+}

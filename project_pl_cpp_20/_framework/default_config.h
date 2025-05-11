@@ -9,15 +9,15 @@
 using namespace std;
 
 //
-class CIniFile
+class IniFile
 {
 public:
     wstring _wstrConfigFileName{};
     WCHAR _wcsFileName[1024 + 1]{0,};
 
 public:
-    CIniFile();
-    virtual ~CIniFile();
+    IniFile();
+    virtual ~IniFile();
     void SetConfigFile(wstring wstrFileName);
 
     void GetValue(LPCWSTR appName, LPCWSTR keyName, WORD& wValue, WORD wDefaultValue = -1);
@@ -27,12 +27,12 @@ public:
 };
 
 //
-class CDefaultConfig
-    : public CIniFile
+class DefaultConfig
+    : public IniFile
 {
 public:
-    CDefaultConfig() {};
-    virtual ~CDefaultConfig() {};
+    DefaultConfig() {};
+    virtual ~DefaultConfig() {};
 };
 
 //

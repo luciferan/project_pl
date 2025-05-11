@@ -101,8 +101,8 @@ public:
     const SOCKET GetSocket() { return _socket; }
     const bool GetActive() { return INVALID_SOCKET != _socket; }
 
-    void SetDomainA(char* pszDomain, WORD wPort);
-    void SetDomain(WCHAR* pwcsDomain, WORD wPort);
+    void SetDomainA(const char* pszDomain, WORD wPort);
+    void SetDomain(const WCHAR* pwcsDomain, WORD wPort);
     const char* GetDomainA() { return _szDomain; }
     const WCHAR* GetDomain() { return _wcsDomain; };
     const WORD GetPort() { return _wPort; }

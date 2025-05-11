@@ -15,6 +15,27 @@
 #include <source_location>
 
 //
+void NetworkConfig::SetConfig(ConfigLoader& config)
+{
+    id = config.GetInt("id");
+    name = config.GetString("name");
+
+    workerThreadCount = config.GetInt("network_thread", 2);
+
+    doListen = config.GetBool("listener", false);
+    if (doListen) {
+        useAcceptEx = (config.GetBool("listner_mode", 1) == 1 ? false : true);
+        nAcceptPrepareCount = config.GetInt("listener_prepare", 10);
+    }
+
+    config.GetServerInfo("client_session", listenClient);
+    config.GetServerInfo("stream_session", listenStream);
+    config.GetServerInfo("web_session", listenWeb);
+
+    config.GetServerInfo("db_server", DbServer);
+}
+
+//
 LPFN_ACCEPTEX acceptEx{nullptr};
 
 //
@@ -27,9 +48,11 @@ Network::~Network(void)
     Finalize();
 }
 
-bool Network::Initialize()
+bool Network::Initialize(ConfigLoader &config)
 {
     bool bRet{false};
+
+    _config.SetConfig(config);
 
     //
     WSADATA wsa;
@@ -124,7 +147,7 @@ eResultCode Network::AcceptThread(stop_token token)
     //
     SOCKET listenSock = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
     if (INVALID_SOCKET == listenSock) {
-        Log("error: WSASocket fail.");
+        LogError("error: WSASocket fail.");
         return eResultCode::fail;
     }
 
@@ -132,7 +155,7 @@ eResultCode Network::AcceptThread(stop_token token)
     memset(&listenAddr, 0, sizeof(listenAddr));
     listenAddr.sin_family = AF_INET;
     listenAddr.sin_addr.s_addr = /*inet_addr(pszListenIP);*/ htonl(INADDR_ANY);
-    listenAddr.sin_port = htons(_config.listenInfo.wPort);
+    listenAddr.sin_port = htons(_config.listenClient.port);
 
     //
     if (SOCKET_ERROR == ::bind(listenSock, (SOCKADDR*)&listenAddr, sizeof(listenAddr))) {
@@ -145,13 +168,13 @@ eResultCode Network::AcceptThread(stop_token token)
         LogError(format("listen fail. error {}", nErrorCode));
         return eResultCode::fail;
     }
-    Log(format("log: accept bind port: {}", _config.listenInfo.wPort));
+    Log(format("log: accept bind port: {}", _config.listenClient.port));
 
     _ListenSock = listenSock;
     _ListenAddr = listenAddr;
 
     //
-    Log(format("log: {}: start", "Network::AcceptThread"));
+    Log(format("log: {} start", "Network::AcceptThread"));
     while (!token.stop_requested()) {
         SOCKADDR_IN AcceptAddr;
         memset(&AcceptAddr, 0, sizeof(AcceptAddr));
@@ -220,13 +243,13 @@ eResultCode Network::AcceptThread(stop_token token)
         }
     }
 
-    Log(format("log: {}: end", "Network::AcceptThread"));
+    Log(format("log: {} end", "Network::AcceptThread"));
     return eResultCode::succ;
 }
 
 eResultCode Network::WorkerThread(stop_token token)
 {
-    Log(format("log: {}: create", "Network::WorkerThread"));
+    Log(format("log: {} create", "Network::WorkerThread"));
     _threadSuspended.wait(1);
 
     ConnectorMgr& ConnectMgr{ConnectorMgr::GetInstance()};
@@ -254,7 +277,7 @@ eResultCode Network::WorkerThread(stop_token token)
     HANDLE& hNetworkHandle{_hIOCP};
 
     //
-    Log(format("log: {}: start", "Network::WorkerThread"));
+    Log(format("log: {} start", "Network::WorkerThread"));
     while (!token.stop_requested()) {
         dwIOSize = 0;
         bRet = FALSE;
@@ -281,7 +304,7 @@ eResultCode Network::WorkerThread(stop_token token)
 
         //
         if (NULL == lpOverlapped) {
-            Log("error: WorkerThread(): lpOverlapped is NULL");
+            LogError("WorkerThread(): lpOverlapped is NULL");
             continue;
         }
         lpOverlappedEx = (OverlappedEx*)lpOverlapped;
@@ -290,7 +313,7 @@ eResultCode Network::WorkerThread(stop_token token)
         //
         pConnector = lpOverlappedEx->pConnector;
         if (!pConnector) {
-            Log(format("error: WorkerThread(): Invalid connector {:x}", reinterpret_cast<intptr_t>(pConnector)));
+            LogError(format("WorkerThread(): Invalid connector {:x}", reinterpret_cast<intptr_t>(pConnector)));
             continue;
         }
 
@@ -305,18 +328,18 @@ eResultCode Network::WorkerThread(stop_token token)
                 }
 
                 //
-                if (pConnector->GetSendRef() || pConnector->GetRecvRef() ) {
+                if (pConnector->GetSendRef() || pConnector->GetRecvRef()) {
                     switch (netOp) {
                     case eNetworkOperator::OP_SEND: pConnector->DecSendRef(); break;
                     case eNetworkOperator::OP_RECV: pConnector->DecRecvRef(); break;
                     }
                 }
 
-                if (0 >= pConnector->GetSendRef() || 0 >= pConnector->GetRecvRef() ) {
+                if (0 >= pConnector->GetSendRef() || 0 >= pConnector->GetRecvRef()) {
                     pConnector->TryRelease();
                 }
             } else {
-                Log(format("error: WorkerThread(): unknown connector. IoSize {}, pCurrSockEx {:x}", dwIOSize, reinterpret_cast<intptr_t>(lpOverlappedEx)));
+                LogError(format("WorkerThread(): unknown connector. IoSize {}, pCurrSockEx {:x}", dwIOSize, reinterpret_cast<intptr_t>(lpOverlappedEx)));
             }
 
             continue;
@@ -342,13 +365,13 @@ eResultCode Network::WorkerThread(stop_token token)
         }
     }
 
-    Log(format("log: {}: end", "Network::WorkerThread"));
+    Log(format("log: {} end", "Network::WorkerThread"));
     return eResultCode::succ;
 }
 
 eResultCode Network::UpdateThread(stop_token token)
 {
-    Log(format("log: {}: create", "Network::UpdateThread"));
+    Log(format("log: {} create", "Network::UpdateThread"));
     _threadSuspended.wait(1);
 
     //
@@ -364,7 +387,7 @@ eResultCode Network::UpdateThread(stop_token token)
     std::list<Connector*> ReleaseConnectorList{};
 
     //
-    Log(format("log: {}: start", "Network::UpdateThread"));
+    Log(format("log: {} start", "Network::UpdateThread"));
     while (!token.stop_requested()) {
         biCurrTime = GetTimeMilliSec();
 
@@ -374,7 +397,7 @@ eResultCode Network::UpdateThread(stop_token token)
         this_thread::sleep_for(1ms);
     }
 
-    Log(format("log: {}: end", "Network::UpdateThread"));
+    Log(format("log: {} end", "Network::UpdateThread"));
     return eResultCode::succ;
 }
 
@@ -415,25 +438,18 @@ bool Network::lookup_host(const char* hostname, std::string& hostIP)
     }
 }
 
-Connector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
+Connector* Network::Connect(const WCHAR* pwcsDomain, const WORD wPort)
 {
     Connector* pConn = ConnectorMgr::GetInstance().GetFreeObject(); //new Connector;
     if (!pConn) {
         return nullptr;
     }
-    bool bActive = true;
-
-    //
     pConn->SetDomain(pwcsDomain, wPort);
 
     //
     SOCKADDR_IN SockAddr;
     memset((void*)&SockAddr, 0, sizeof(SockAddr));
 
-    BOOL bSockOpt = TRUE;
-    int nRet = 0;
-
-    //
     SockAddr.sin_family = AF_INET;
     if (iswalpha(pwcsDomain[0])) {
         //struct hostent *host = gethostbyname(pConn->GetDomainA());
@@ -458,6 +474,47 @@ Connector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
 
     SockAddr.sin_port = htons(wPort);
 
+
+    //
+    return DoConnect(pConn, SockAddr);
+}
+
+
+Connector* Network::Connect(const string strDomain, const WORD wPort)
+{
+    Connector* pConn = ConnectorMgr::GetInstance().GetFreeObject(); //new Connector;
+    if (!pConn) {
+        return nullptr;
+    }
+    pConn->SetDomainA(strDomain.c_str(), wPort);
+
+    //
+    SOCKADDR_IN SockAddr;
+    memset((void*)&SockAddr, 0, sizeof(SockAddr));
+
+    SockAddr.sin_family = AF_INET;
+    if (isalpha(strDomain[0])) {
+        string strHostIP{};
+        bool bRet = lookup_host(pConn->GetDomainA(), strHostIP);
+        if (bRet) {
+            InetPtonA(AF_INET, strHostIP.c_str(), &SockAddr.sin_addr);
+        } else {
+            LogError("GetAddrInfo fail");
+            return nullptr;
+        }
+    } else {
+        InetPtonA(AF_INET, strDomain.c_str(), &SockAddr.sin_addr);
+    }
+    SockAddr.sin_port = htons(wPort);
+
+    //
+    return DoConnect(pConn, SockAddr);
+}
+
+Connector* Network::DoConnect(Connector* pConn, SOCKADDR_IN& SockAddr)
+{
+    BOOL bSockOpt = TRUE;
+
     // 소켓 생성
     SOCKET sock = pConn->SetSocket(WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED));
     if (INVALID_SOCKET == pConn->GetSocket()) {
@@ -474,7 +531,7 @@ Connector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
 
     //
     // 연결 시도
-    nRet = connect(sock, (SOCKADDR*)&SockAddr, sizeof(SockAddr));
+    int nRet = connect(sock, (SOCKADDR*)&SockAddr, sizeof(SockAddr));
     if (SOCKET_ERROR == nRet) {
         int nErrorCode = WSAGetLastError();
         LogError(format("connect() fail.error:{}", nErrorCode));
@@ -509,7 +566,7 @@ Connector* Network::Connect(WCHAR* pwcsDomain, const WORD wPort)
     if (SOCKET_ERROR == nRet) {
         int nErrorCode = WSAGetLastError();
         if (WSA_IO_PENDING != nErrorCode) {
-            Log(format("error: Network::Connect(): WSARecv() fail. {}, Socket {}. error:{}", pConn->GetUID(), pConn->GetSocket(), nErrorCode));
+            LogError(format("Network::Connect(): WSARecv() fail. {}, Socket {}. error:{}", pConn->GetUID(), pConn->GetSocket(), nErrorCode));
             //ConnectorMgr::GetInstance().SetFreeObject(pConn);
             pConn->TryRelease();
             return nullptr;
@@ -602,8 +659,8 @@ void Network::DoSend(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD d
 {
     SendOverlapped* pSendOverlapped = static_cast<SendOverlapped*>(pOverlappedEx);
 
-    Log(format("debug: WorkerThread(): <{}> SendResult : socket:{}. SendRequestSize {}, SendSize {}", pConnector->GetUID(), pConnector->GetSocket(), (int)pSendOverlapped->pBuffer->_nDataSize, dwSendCompleteSize));
-    PacketLog(format(L"debug: WorkerThread(): <{}> SendData:", pConnector->GetUID()), pSendOverlapped->pBuffer->_pBuffer, dwSendCompleteSize);
+    LogDebug(format("<{}> SendResult : socket:{}. SendRequestSize {}, SendSize {}", pConnector->GetUID(), pConnector->GetSocket(), (int)pSendOverlapped->pBuffer->_nDataSize, dwSendCompleteSize));
+    PacketLog(format("<{}> SendData:", pConnector->GetUID()), pSendOverlapped->pBuffer->_pBuffer, dwSendCompleteSize);
 
     DWORD dwSendDataSize{0};
     int nRemainData{pConnector->SendComplete(dwSendCompleteSize)};
@@ -615,7 +672,7 @@ void Network::DoSend(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD d
         if (SOCKET_ERROR == iRet) {
             int nErrorCode = WSAGetLastError();
             if (WSA_IO_PENDING != nErrorCode) {
-                Log(format("error: WorkerThread(): <{}> WSASend() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
+                LogError(format("<{}> WSASend() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
                 Disconnect(pConnector);
             }
         }
@@ -626,9 +683,9 @@ void Network::DoRecv(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD d
 {
     RecvOverlapped* pRecvOverlapped = static_cast<RecvOverlapped*>(pOverlappedEx);
 
-    Log(format("debug: WorkerThread(): <{}> RecvResult : socket:{}. RecvDataSize {}", pConnector->GetUID(), pConnector->GetSocket(), dwRecvCompleteSize));
-    //PacketLog(format(L"debug: WorkerThread(): <{}> RecvData: ", pConnector->GetUID()), pNetworkBuffer->_pBuffer, dwRecvCompleteSize);
-    PacketLog(format(L"debug: WorkerThread(): <{}> RecvData: ", pConnector->GetUID()), pRecvOverlapped->pBuffer->_pBuffer, dwRecvCompleteSize);
+    LogDebug(format("<{}> RecvResult : socket:{}. RecvDataSize {}", pConnector->GetUID(), pConnector->GetSocket(), dwRecvCompleteSize));
+    //PacketLog(format("<{}> RecvData: ", pConnector->GetUID()), pNetworkBuffer->_pBuffer, dwRecvCompleteSize);
+    PacketLog(format("<{}> RecvData: ", pConnector->GetUID()), pRecvOverlapped->pBuffer->_pBuffer, dwRecvCompleteSize);
 
     DWORD dwRecvDataSize{0};
     DWORD dwFlags{0};
@@ -636,7 +693,7 @@ void Network::DoRecv(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD d
     // 수신 완료
     int nResult = pConnector->RecvComplete(dwRecvCompleteSize);
     if (0 > nResult) {
-        Log(format("error: WorkerThread(): <{}> Connector::RecvComplete() fail. socket:{}", pConnector->GetUID(), pConnector->GetSocket()));
+        LogError(format("<{}> Connector::RecvComplete() fail. socket:{}", pConnector->GetUID(), pConnector->GetSocket()));
         Disconnect(pConnector);
     } else {
         if (0 < pConnector->RecvPrepare()) {
@@ -645,12 +702,12 @@ void Network::DoRecv(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD d
             if (SOCKET_ERROR == iRet) {
                 int nErrorCode = WSAGetLastError();
                 if (WSA_IO_PENDING != nErrorCode) {
-                    Log(format("error: WorkerThread(): <{}> WSARecv() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
+                    LogError(format("<{}> WSARecv() fail. socket:{}. error:{}", pConnector->GetUID(), pConnector->GetSocket(), nErrorCode));
                     Disconnect(pConnector);
                 }
             }
         } else {
-            Log(format("error: WorkerThread(): <{}> Connector::RecvPrepare() fail. socket:{}", pConnector->GetUID(), pConnector->GetSocket()));
+            LogError(format("<{}> Connector::RecvPrepare() fail. socket:{}", pConnector->GetUID(), pConnector->GetSocket()));
         }
     }
 }
@@ -659,13 +716,13 @@ bool Network::InitListenSocket()
 {
     SOCKET listenSock = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
     if (INVALID_SOCKET == listenSock) {
-        Log("error: WSASocket fail.");
+        LogError("WSASocket fail.");
         return false;
     }
 
     HANDLE hRet = CreateIoCompletionPort((HANDLE)listenSock, _hIOCP, NULL, NULL);
     if (hRet != _hIOCP) {
-        Log("error: CreateIoCompletionPort fail.");
+        LogError("CreateIoCompletionPort fail.");
         return false;
     }
 
@@ -673,7 +730,7 @@ bool Network::InitListenSocket()
     memset(&listenAddr, 0, sizeof(listenAddr));
     listenAddr.sin_family = AF_INET;
     listenAddr.sin_addr.s_addr = /*inet_addr(pszListenIP);*/ htonl(INADDR_ANY);
-    listenAddr.sin_port = htons(_config.listenInfo.wPort);
+    listenAddr.sin_port = htons(_config.listenClient.port);
 
     if (SOCKET_ERROR == ::bind(listenSock, (SOCKADDR*)&listenAddr, sizeof(listenAddr))) {
         int nErrorCode = WSAGetLastError();

@@ -7,19 +7,13 @@
 #include "../_lib/exception_report.h"
 #include "../_lib/util.h"
 
-#include "../_lib/Log.h"
-//#include "./Config.h"
-
 #include "./command_unit_process.h"
+#include "./config.h"
 
 #include <thread>
-#include <mutex>
 #include <atomic>
 #include <list>
 #include <set>
-
-//
-//bool LoadConfig();
 
 //
 class App
@@ -46,7 +40,7 @@ public:
         return *pInstance;
     }
 
-    bool Init();
+    bool Init(ConfigLoader& configLoader);
 
     bool Start();
     bool Stop();

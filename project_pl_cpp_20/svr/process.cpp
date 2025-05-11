@@ -1,14 +1,13 @@
 ﻿#include "stdafx.h"
 
-#include "./process.h"
-
 #include "../_framework/connector_mgr.h"
 #include "../_framework/packet_data_queue.h"
 #include "../_lib/log.h"
 
+#include "./process.h"
 #include "./packet_svr.h"
 #include "./user_session_mgr.h"
-//#include "Config.h"
+#include "./config.h"
 
 #include <iostream>
 #include <format>
@@ -21,8 +20,20 @@ CommandUnitQueue& GetCmdQueue()
 }
 
 // App --------------------------------------------------------------------------
-bool App::Init()
+bool App::Init(ConfigLoader& configLoader)
 {
+    //WCHAR wcsHostIP[]{L"127.0.0.1"};
+    //WORD wHostPort{60010};
+
+    //net._config.doListen = true;
+    //wcsncpy_s(net._config.listenClient.wcsIP, NetworkConst::MAX_LEN_IP4_STRING, wcsHostIP, lstrlenW(wcsHostIP));
+    //net._config.listenClient.wPort = wHostPort;
+
+    if (false == Network::GetInstance().Initialize(configLoader)) {
+        LogError("network initialize fail");
+        return false;
+    }
+
     _threads.emplace_back(&App::ProcessThread, this, _threadStop.get_token());
     _threads.emplace_back(&App::UpdateThread, this, _threadStop.get_token());
 
@@ -54,24 +65,13 @@ bool App::Stop()
 
 unsigned int App::ProcessThread(stop_token token)
 {
-    Log(format("log: {} create", "App::ProcessThread"));
+    Log(format("log: {}: create", "App::ProcessThread"));
     _threadSuspended.wait(1);
 
     Network& net{Network::GetInstance()};
 
-    WCHAR wcsHostIP[]{L"127.0.0.1"};
-    WORD wHostPort{60010};
-
-    net._config.doListen = true;
-    wcsncpy_s(net._config.listenInfo.wcsIP, NetworkConst::MAX_LEN_IP4_STRING, wcsHostIP, lstrlenW(wcsHostIP));
-    net._config.listenInfo.wPort = wHostPort;
-
-    if (false == net.Initialize()) {
-        Log(format("error: App::{}: network initialize fail", source_location::current().function_name()));
-        return 1;
-    }
     if (false == net.Start()) {
-        Log(format("error: App::{}: network start fail", source_location::current().function_name()));
+        LogError(format("App::{}: network start fail", source_location::current().function_name()));
         return 1;
     }
 
@@ -86,7 +86,7 @@ unsigned int App::ProcessThread(stop_token token)
     DWORD dwPacketSize{0};
 
     //
-    Log(format("log: {}: start", "App::ProcessThread"));
+    Log(format("log: {} start", "App::ProcessThread"));
     while (!token.stop_requested()) {
         pPacket = RecvPacketQueue.Pop();
         if (!pPacket) {
@@ -96,7 +96,7 @@ unsigned int App::ProcessThread(stop_token token)
         PacketHead* pHead = (PacketHead*)pPacket->_pBuffer;
         PacketTail* pTail = (PacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(PacketTail));
         if (PACKET_CHECK_TAIL_KEY != pTail->dwCheckTail) {
-            Log("Invliad packet");
+            LogError("Invliad packet");
             net.Disconnect(pConnector);
         }
 
@@ -121,10 +121,10 @@ unsigned int App::ProcessThread(stop_token token)
 
                     pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
                 } else {
-                    Log("UserSessionMgr::GetFreeUserSession() fail");
+                    LogError("UserSessionMgr::GetFreeUserSession() fail");
                 }
             } else {
-                Log("Invliad packet");
+                LogError("Invliad packet");
                 net.Disconnect(pConnector);
             }
         }
@@ -134,14 +134,14 @@ unsigned int App::ProcessThread(stop_token token)
 
     net.Stop();
 
-    Log(format("log: {}: end", "App::ProcessThread"));
+    Log(format("log: {} end", "App::ProcessThread"));
     return 1;
 };
 
 //
 unsigned int App::UpdateThread(stop_token token)
 {
-    Log(format("log: {} create", "App::UpdateThread"));
+    Log(format("log: {}: create", "App::UpdateThread"));
     _threadSuspended.wait(1);
 
     Network& Net{Network::GetInstance()};
@@ -150,7 +150,7 @@ unsigned int App::UpdateThread(stop_token token)
     INT64 biMonitorReport{0};
 
     //
-    Log(format("log: {}: start", "App::UpdateThread"));
+    Log(format("log: {} start", "App::UpdateThread"));
     while (!token.stop_requested()) {
         biCurrTime = GetTimeMilliSec();
 
@@ -167,12 +167,12 @@ unsigned int App::UpdateThread(stop_token token)
             {
                 wstring wstrReport{};
                 wstrReport.append(format(L"ConnectorState: {}", ConnectorMgr::GetInstance().GetReport()));
-                g_PerformanceLog.Write(wstrReport.c_str());
+                PerformanceLog(wstrReport);
             }
             {
                 wstring wstrReport{};
                 wstrReport.append(format(L"UserSessionState: {}", UserSessionMgr::GetInstance().GetReport()));
-                g_PerformanceLog.Write(wstrReport.c_str());
+                PerformanceLog(wstrReport);
             }
         }
 
@@ -183,6 +183,6 @@ unsigned int App::UpdateThread(stop_token token)
         this_thread::sleep_for(1ms);
     }
 
-    Log(format("log: {}: end", "App::UpdateThread"));
+    Log(format("log: {} end", "App::UpdateThread"));
     return 1;
 }

@@ -2,7 +2,7 @@
 #include "./default_config.h"
 
 //
-CIniFile::CIniFile()
+IniFile::IniFile()
 {
     //_wstrConfigFileName = GetFileName();
     _wstrConfigFileName.append(L"./config/");
@@ -10,22 +10,22 @@ CIniFile::CIniFile()
     _wstrConfigFileName.append(L".ini");
 }
 
-CIniFile::~CIniFile()
+IniFile::~IniFile()
 {
 }
 
-void CIniFile::SetConfigFile(wstring wstrFileName)
+void IniFile::SetConfigFile(wstring wstrFileName)
 {
     _wstrConfigFileName = wstrFileName;
 }
 
-void CIniFile::GetValue(LPCWSTR appName, LPCWSTR keyName, INT& nValue, INT nDefaultValue /*= -1*/)
+void IniFile::GetValue(LPCWSTR appName, LPCWSTR keyName, INT& nValue, INT nDefaultValue /*= -1*/)
 {
     nValue = GetPrivateProfileIntW(appName, keyName, nDefaultValue, _wstrConfigFileName.c_str());
     return;
 }
 
-void CIniFile::GetValue(LPCWSTR appName, LPCWSTR keyName, WORD& wValue, WORD wDefaultValue /*= -1*/)
+void IniFile::GetValue(LPCWSTR appName, LPCWSTR keyName, WORD& wValue, WORD wDefaultValue /*= -1*/)
 {
     int tempValue = wDefaultValue;
     tempValue = GetPrivateProfileIntW(appName, keyName, wDefaultValue, _wstrConfigFileName.c_str());
@@ -38,7 +38,7 @@ void CIniFile::GetValue(LPCWSTR appName, LPCWSTR keyName, WORD& wValue, WORD wDe
     return;
 }
 
-void CIniFile::GetValue(LPCWSTR appName, LPCWSTR keyName, INT64& biValue, INT64 biDefaultValue /*= -1*/)
+void IniFile::GetValue(LPCWSTR appName, LPCWSTR keyName, INT64& biValue, INT64 biDefaultValue /*= -1*/)
 {
     WCHAR wcsTempString[25 + 1] = {};
     DWORD dwTempStringLen = 25;
@@ -54,7 +54,7 @@ void CIniFile::GetValue(LPCWSTR appName, LPCWSTR keyName, INT64& biValue, INT64 
     return;
 }
 
-void CIniFile::GetValue(LPCWSTR appName, LPCWSTR keyName, LPWSTR pwcsResult, DWORD dwResultLen)
+void IniFile::GetValue(LPCWSTR appName, LPCWSTR keyName, LPWSTR pwcsResult, DWORD dwResultLen)
 {
     GetPrivateProfileStringW(appName, keyName, L"", pwcsResult, dwResultLen, _wstrConfigFileName.c_str());
     return;

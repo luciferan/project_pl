@@ -30,6 +30,7 @@ enum class eLogLevel
 {
     Debug,
     Info,
+    Normal,
     Warning,
     Error,
     Crirical,
@@ -49,24 +50,27 @@ private:
     list<wstring> _msgQueue{};
     int _maxQueueSize{20};
 
+    eLogLevel _logLevel{eLogLevel::Debug};
+
     //
 private:
-    void ConsoleWrite(const wstring& wstr);
+    void ConsoleWrite(eLogLevel logLevel, const wstring& wstr);
     void FileWrite(const wstring& wstr);
-    void FileWrite(SafeLock& lock, const list<wstring> &list);
+    void FileWrite(SafeLock& lock, const list<wstring>& list);
 
 public:
     FileLogger();
     virtual ~FileLogger();
 
-    bool Set(wstring wstrFileName);
+    void SetLogFile(wstring wstrFileName);
+    void SetLogLevel(eLogLevel logLevel);
 
-    void Write(const std::string& str);
-    void Write(const std::wstring& wstr);
-    void Write(const WCHAR* pwcsFormat, ...);
+    void Write(eLogLevel logLevel, const std::string& str);
+    void Write(eLogLevel logLevel, const std::wstring& wstr);
+    //void Write(eLogLevel logLevel, const WCHAR* pwcsFormat, ...);
 
     void AddMessage(const std::wstring& wstr);
-     void Flush(bool bForce = false);
+    void Flush(bool bForce = false);
 };
 
 //
@@ -75,11 +79,13 @@ extern FileLogger g_PerformanceLog;
 
 extern void Log(const std::string& str);
 extern void Log(const std::wstring& str);
-extern void LogDebug(const std::string& str, std::source_location loc = std::source_location::current());
+extern void LogDebug(const std::string& str);
+extern void LogDebug(const std::wstring& wstr);
 extern void LogError(const std::string& str, std::source_location loc = std::source_location::current());
-//extern void WriteMiniNetLog(std::wstring wstr);
-extern void PacketLog(const std::wstring& str, const char* pPacketData, int nPacketDataSize);
+
+extern void PacketLog(const std::string& str, const char* pPacketData, int nPacketDataSize);
 extern void PerformanceLog(const std::string& str);
+extern void PerformanceLog(const std::wstring& wstr);
 
 //
 #endif //__LOG_H__

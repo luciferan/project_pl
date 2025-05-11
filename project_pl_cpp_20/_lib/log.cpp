@@ -6,50 +6,66 @@
 #include <io.h>
 #include <iostream>
 
+//
 void Log(const std::string& str)
 {
-    g_Log.Write(str);
+    g_Log.Write(eLogLevel::Normal, FormatA("[%-8s] %s", "normal", str.c_str()));
 }
 
 void Log(const std::wstring& wstr)
 {
-    g_Log.Write(wstr);
+    g_Log.Write(eLogLevel::Normal, FormatW(L"[%-8s] %s", L"normal", wstr.c_str()));
+}
+
+void LogDebug(const std::string& str)
+{
+    g_Log.Write(eLogLevel::Debug, FormatA("[%-8s] %s", "debug", str.c_str()));
+}
+
+void LogDebug(const std::wstring& wstr)
+{
+    g_Log.Write(eLogLevel::Debug, FormatW(L"[%-8s] %s", L"debug", wstr.c_str()));
+}
+
+void LogInfo(const std::string& str)
+{
+    g_Log.Write(eLogLevel::Info, FormatA("[%-8s] %s", "info", str.c_str()));
 }
 
 void LogError(const std::string& str, std::source_location loc /*= std::source_location::current()*/)
 {
-    g_Log.Write(format("error: {} {} {}: {}", loc.file_name(), loc.function_name(), loc.line(), str));
+    g_Log.Write(eLogLevel::Error, FormatA("[%-8s] %s %s", "error", str.c_str(), format("Loc:{} {} {}", loc.file_name(), loc.function_name(), loc.line()).c_str()));
 }
 
-void LogDebug(const std::string& str, std::source_location loc /*= std::source_location::current()*/)
+void PacketLog(const std::string& str, const char* pPacketData, int nPacketDataSize)
 {
-    g_Log.Write(format("debug: {}", str));
-}
-
-void PacketLog(const std::wstring& str, const char* pPacketData, int nPacketDataSize)
-{
-    std::wstring strBuffer{};
+    std::string strBuffer{};
     strBuffer.append(str);
 
     if (1024 < nPacketDataSize) {
         for (int idx = 0; idx < 6; ++idx) {
-            strBuffer.append(format(L"{0:02X}", pPacketData[idx]));
+            strBuffer.append(format("{0:02X}", pPacketData[idx]));
         }
-        strBuffer.append(L". connot write packetlog. too long.");
+        strBuffer.append(". connot write packetlog. too long.");
 
     } else {
         for (int idx = 0; idx < nPacketDataSize; ++idx) {
-            strBuffer.append(format(L"{0:02X}", pPacketData[idx]));
+            strBuffer.append(format("{0:02X}", pPacketData[idx]));
         }
-        strBuffer.append(L"\0");
+        strBuffer.append("\0");
     }
 
-    Log(strBuffer);
+    LogDebug(strBuffer);
 }
 
 void PerformanceLog(const string& str)
 {
-    g_PerformanceLog.Write(format("perfornamce: {}", str));
+    g_PerformanceLog.Write(eLogLevel::Info, FormatA("[%8s] %s", "performance", str.c_str()));
+}
+
+void PerformanceLog(const wstring& wstr)
+{
+    g_PerformanceLog.Write(eLogLevel::Info, FormatW(L"[%8s] %s", L"performance", wstr.c_str()));
 }
 
 //
@@ -70,56 +86,52 @@ FileLogger::~FileLogger()
     Flush();
 }
 
-bool FileLogger::Set(wstring wstrFileName)
+void FileLogger::SetLogFile(wstring wstrFileName)
 {
     _wstrFileName = wstrFileName;
-    return true;
 }
 
-void FileLogger::Write(const string& str)
+void FileLogger::SetLogLevel(eLogLevel logLevel)
+{
+    _logLevel = logLevel;
+
+}
+
+void FileLogger::Write(eLogLevel logLevel, const string& str)
 {
     CTimeSet CurrTime;
     wstring wstrLogText = FormatW(L"%02d:%02d:%02d %hs", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), str.c_str());
 
     AddMessage(wstrLogText);
-    ConsoleWrite(wstrLogText);
-
-    //
-    return;
+    ConsoleWrite(logLevel, wstrLogText);
 }
 
-void FileLogger::Write(const std::wstring& wstr)
+void FileLogger::Write(eLogLevel logLevel, const std::wstring& wstr)
 {
     CTimeSet CurrTime;
     wstring wstrLogText = FormatW(L"%02d:%02d:%02d %s", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), wstr.c_str());
 
     AddMessage(wstrLogText);
-    ConsoleWrite(wstrLogText);
-
-    //
-    return;
+    ConsoleWrite(logLevel, wstrLogText);
 }
 
-void FileLogger::Write(const WCHAR* pFormat, ...)
-{
-    WCHAR* pwcsBuffer = new WCHAR[MAX_LEN_LOG_STRING + 1];
-    memset(pwcsBuffer, 0, sizeof(pwcsBuffer));
-
-    va_list args;
-    va_start(args, pFormat);
-    _vsnwprintf_s(pwcsBuffer, MAX_LEN_LOG_STRING, MAX_LEN_LOG_STRING, pFormat, args);
-    va_end(args);
-
-    //
-    CTimeSet CurrTime;
-    wstring wstrLogText = FormatW(L"%02d:%02d:%02d %s", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), pwcsBuffer);
-
-    AddMessage(wstrLogText);
-    ConsoleWrite(wstrLogText);
-
-    //
-    return;
-}
+//void FileLogger::Write(eLogLevel logLevel, const WCHAR* pFormat, ...)
+//{
+//    WCHAR* pwcsBuffer = new WCHAR[MAX_LEN_LOG_STRING + 1];
+//    memset(pwcsBuffer, 0, sizeof(pwcsBuffer));
+//
+//    va_list args;
+//    va_start(args, pFormat);
+//    _vsnwprintf_s(pwcsBuffer, MAX_LEN_LOG_STRING, MAX_LEN_LOG_STRING, pFormat, args);
+//    va_end(args);
+//
+//    //
+//    CTimeSet CurrTime;
+//    wstring wstrLogText = FormatW(L"%02d:%02d:%02d %s", CurrTime.GetHour(), CurrTime.GetMin(), CurrTime.GetSec(), pwcsBuffer);
+//
+//    AddMessage(wstrLogText);
+//    ConsoleWrite(logLevel, wstrLogText);
+//}
 
 void FileLogger::AddMessage(const std::wstring& wstr)
 {
@@ -151,8 +163,12 @@ void FileLogger::Flush(bool bForce /*= false*/)
     FileWrite(fileLock, list);
 }
 
-void FileLogger::ConsoleWrite(const wstring& wstr)
+void FileLogger::ConsoleWrite(eLogLevel logLevel, const wstring& wstr)
 {
+    if (logLevel < _logLevel) {
+        return;
+    }
+
     wprintf(L"%s\n", wstr.c_str());
 }
 
@@ -186,13 +202,13 @@ void FileLogger::FileWrite(SafeLock& lock, const list<wstring> &list)
     if (0 != error) {
         error = _wfopen_s(&pFile, wstrFileName.c_str(), L"w");
         if (0 != error) {
-            ConsoleWrite(FormatW(L"error: FileLogger::FileWrite(): log file open fail %d", error).c_str());
+            ConsoleWrite(eLogLevel::Error, FormatW(L"error: FileLogger::FileWrite(): log file open fail %d", error).c_str());
             return;
         }
     } else {
         error = _wfopen_s(&pFile, wstrFileName.c_str(), L"a");
         if (0 != error) {
-            ConsoleWrite(FormatW(L"error: FileLogger::FileWrite(): log file open fail %d", error).c_str());
+            ConsoleWrite(eLogLevel::Error, FormatW(L"error: FileLogger::FileWrite(): log file open fail %d", error).c_str());
             return;
         }
     }

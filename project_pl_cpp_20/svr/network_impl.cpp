@@ -21,7 +21,7 @@ eResultCode Network::DoUpdate(INT64 biCurrTime)
     //    wstrReport.append(L"ConnectorState: ");
     //    wstrReport.append(ConnectorMgr::GetInstance().GetReport());
 
-    //    g_PerformanceLog.Write(wstrReport.c_str());
+    //    PerformanceLog(wstrReport);
     //}
 
     return eResultCode::succ;

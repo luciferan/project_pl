@@ -1,4 +1,6 @@
-﻿#include "./packet_cli.h"
+﻿#include "stdafx.h"
+
+#include "./packet_cli.h"
 
 #include "../_framework/connector.h"
 #include "../_lib/util.h"

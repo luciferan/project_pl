@@ -1,13 +1,13 @@
-﻿#include "process.h"
+﻿#include "stdafx.h"
 
 #include "../_framework/connector_mgr.h"
 #include "../_framework/packet_data_queue.h"
 #include "../_lib/log.h"
 
+#include "./process.h"
 #include "./packet_cli.h"
 #include "./user_session_mgr.h"
 #include "./character.h"
-//#include "Config.h"
 
 #include <iostream>
 #include <format>
@@ -20,29 +20,23 @@ CommandUnitQueue& GetCmdQueue()
 }
 
 // App --------------------------------------------------------------------------
-bool App::Start()
+bool App::Init(ConfigLoader& configLoader)
 {
-    Network& net{Network::GetInstance()};
-    net._config.workerThreadCount = 2;
-    net._config.doListen = false;
-
-    if (false == net.Initialize()) {
-        LogError("Network Initialize fail");
+    if (false == Network::GetInstance().Initialize(configLoader)) {
+        LogError("network initialize fail");
         return false;
     }
 
     _threads.emplace_back(thread{&App::ProcessThread, this, _threadStop.get_token()});
     _threads.emplace_back(thread{&App::CommandThread, this, _threadStop.get_token()});
-    //_threads.emplace_back(thread{&App::UpdateThread, this, _threadStop.get_token()});
 
-    //
+    return true;
+}
+
+bool App::Start()
+{
     _threadSuspended = 0;
     _threadSuspended.notify_all();
-
-    if (false == net.Start()) {
-        LogError("Network start fail");
-        return false;
-    }
 
     for (auto& t : _threads) {
         t.join();
@@ -53,12 +47,9 @@ bool App::Start()
 
 bool App::Stop()
 {
-    Network& net{Network::GetInstance()};
-    if (!net.Stop()) {
-        LogError("Network stop fail");
-    }
-
     _threadStop.request_stop();
+
+    Network::GetInstance().Stop();
     RecvPacketQueue::GetInstance().ForceActivateQueueEvent();
 
     return true;
@@ -70,6 +61,12 @@ unsigned int App::ProcessThread(stop_token token)
     _threadSuspended.wait(1);
 
     Network& net{Network::GetInstance()};
+
+    if (false == Network::GetInstance().Start()) {
+        LogError(format("App::{}: network start fail", source_location::current().function_name()));
+        return 1;
+    }
+
     RecvPacketQueue& recvPacketQueue{RecvPacketQueue::GetInstance()};
     UserSessionMgr& sessionMgr{UserSessionMgr::GetInstance()};
 
@@ -80,7 +77,7 @@ unsigned int App::ProcessThread(stop_token token)
     DWORD dwPacketSize{0};
 
     //
-    Log(format("log: {}: start", "App::ProcessThread"));
+    Log(format("log: {} start", "App::ProcessThread"));
     while (!token.stop_requested()) {
         pPacket = recvPacketQueue.Pop();
         if (!pPacket) {
@@ -105,12 +102,6 @@ unsigned int App::ProcessThread(stop_token token)
         } else {
             PacketHead* pHeader = (PacketHead*)pPacket->_pBuffer;
             if ((PacketTypeS2C)pHeader->dwProtocol == PacketTypeS2C::auth_result) {
-                //if (pUserSession = sessionMgr.GetFreeObject()) {
-                //    pConnector->SetParam((void*)pUserSession);
-                //    pUserSession->SetConnector(pConnector);
-                //} else {
-                //    LogError("UserSessionMgr::GetFreeUserSession fail");
-                //}
             } else {
                 LogError("invalid packet");
                 net.Disconnect(pConnector);
@@ -123,7 +114,7 @@ unsigned int App::ProcessThread(stop_token token)
         _commandQueue.Tick();
     }
 
-    Log(format("log: {}: end", "App::ProcessThread"));
+    Log(format("log: {} end", "App::ProcessThread"));
     return 0;
 }
 
@@ -140,7 +131,7 @@ unsigned int App::UpdateThread(stop_token token)
     list<UserSession*> sessionList{};
 
     //
-    Log(format("log: {}: start", "App::UpdateThread"));
+    Log(format("log: {} start", "App::UpdateThread"));
     while (!token.stop_requested()) {
         //sessionMgr.GetUserSessionList(sessionList);
 
@@ -149,7 +140,7 @@ unsigned int App::UpdateThread(stop_token token)
         //}
     }
 
-    Log(format("log: {}: end", "App::UpdateThread"));
+    Log(format("log: {} end", "App::UpdateThread"));
     return 0;
 }
 
@@ -166,11 +157,8 @@ unsigned int App::CommandThread(stop_token token)
     INT64 biCurrTime{0};
     char cmd[1024]{};
 
-    WCHAR wszHostIP[] = L"127.0.0.1";
-    WORD wHostPort = 60010;
-
     //
-    Log(format("log: {}: start", "App::CommandThread"));
+    Log(format("log: {} start", "App::CommandThread"));
     while (!token.stop_requested()) {
         gets_s(cmd, 1024);
 
@@ -183,20 +171,20 @@ unsigned int App::CommandThread(stop_token token)
         TokenizeA(cmdStr, cmdTokens, " ");
         if (0 == strncmp(cmdTokens[0].c_str(), "/connect", cmdTokens[0].length())) {
             if (!pConnector) {
-                Log(format(L"info: try connect: {} {}", wszHostIP, wHostPort));
-                if (pConnector = net.Connect(wszHostIP, wHostPort)) {
-                    Log("info: connected");
+                Log(format("try connect: {}:{}", clientConfig.serverInfo.ip, clientConfig.serverInfo.port));
+                if (pConnector = net.Connect(clientConfig.serverInfo.ip, clientConfig.serverInfo.port)) {
+                    Log("connected");
 
                     if (pSession = UserSessionMgr::GetInstance().GetFreeObject()) {
                         pConnector->SetParam(pSession);
                         pSession->SetConnector(pConnector);
                     } else {
-                        LogError("CUserSesionMgr::GetFreeUserSession fail");
+                        LogError("UserSessionMgr::GetFreeObject fail");
                         net.Disconnect(pConnector);
                     }
                 }
             } else {
-                Log("info: already connected");
+                Log("already connected");
             }
         } else if (0 == strncmp(cmdTokens[0].c_str(), "/disconnect", cmdTokens[0].length())) {
             if (pConnector) {
@@ -249,6 +237,6 @@ unsigned int App::CommandThread(stop_token token)
         }
     }
 
-    Log(format("log: {}: end", "App::CommandThread"));
+    Log(format("log: {} end", "App::CommandThread"));
     return 0;
 }

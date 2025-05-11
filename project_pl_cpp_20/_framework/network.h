@@ -2,6 +2,8 @@
 #ifndef __NETWORK_H__
 #define __NETWORK_H__
 
+#include "../_lib/config_loader.h"
+
 #include "./_common.h"
 
 #include <queue>
@@ -22,21 +24,24 @@ class Connector;
 class NetworkBuffer;
 struct OverlappedEx;
 
-struct HostInfo
-{
-    WCHAR wcsIP[NetworkConst::MAX_LEN_IP4_STRING + 1]{0,};
-    WORD wPort{0};
-};
-
 struct NetworkConfig
 {
+    int id{0};
+    string name{};
     int workerThreadCount{4};
 
-    bool doListen{true};
-    bool useAcceptEx{true};
+    bool doListen{false};
+    bool useAcceptEx{false};
     int nAcceptPrepareCount{10};
 
-    HostInfo listenInfo;
+    ServerInfo listenClient;
+    ServerInfo listenStream;
+    ServerInfo listenWeb;
+
+    ServerInfo DbServer;
+
+    //
+    void SetConfig(ConfigLoader& config);
 };
 
 //
@@ -69,7 +74,7 @@ public:
         return *pInstance;
     }
 
-    bool Initialize();
+    bool Initialize(ConfigLoader& config);
     bool Finalize();
 
     bool Start();
@@ -82,7 +87,8 @@ public:
     eResultCode DoUpdate(INT64 biCurrTime);
 
     bool lookup_host(const char* hostname, std::string& hostIP);
-    Connector* Connect(WCHAR* pwcszIP, const WORD wPort);
+    Connector* Connect(const WCHAR* pwcsDomain, const WORD wPort);
+    Connector* Connect(const string strDomain, const WORD wPort);
     bool Disconnect(Connector* pConnector);
     void Disconnect(SOCKET socket);
 
@@ -96,6 +102,9 @@ public:
     void DoAccept(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD dwSendCompleteSize);
     void DoRecv(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD dwRecvCompleteSize);
     void DoSend(Connector* pConnector, OverlappedEx* pOverlappedEx, DWORD dwSendCompleteSize);
+
+private:
+    Connector* DoConnect(Connector* pConn, SOCKADDR_IN &SockAddr);
 };
 
 //
