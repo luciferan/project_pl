@@ -21,6 +21,9 @@ history
 - c#으로 포팅
 - rapidjson이 utf-8 인코딩만 읽을수 있는 문제가 있어서 다른거로 바꿔야할까싶음
 
+#20250512
+- c# 기본 구조 작성중
+
 #20250511
 - rapidjson 라이브러리를 사용해서 ConfigLoader 추가
 - vs .editorconfig 추가
