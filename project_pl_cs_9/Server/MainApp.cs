@@ -5,8 +5,9 @@
         static NetworkService network = new();
 
         static void Main(string[] args) {
-            network.Start();
+            Console.Write("MainApp Start");
 
+            network.Start();
             while (true) {
 
             }

@@ -39,6 +39,7 @@ namespace Server
 
             Packet packet = new(packetBuffer);
             readPos = packet.GetSize();
+            BufferTrim();
 
             //
             callback(packet);
@@ -47,6 +48,9 @@ namespace Server
 
         public void BufferTrim() {
             Array.Copy(packetBuffer, readPos, packetBuffer, 0, packetBuffer.Length - readPos);
+            packetSize -= readPos;
+            currPos -= readPos;
+            readPos = 0;
         }
     }
 }

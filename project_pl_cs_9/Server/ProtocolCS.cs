@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -8,8 +9,8 @@ namespace Server
 {
     public class ProtocolCS
     {
-        public const uint HEARTBEAT = 1;
-        public const uint ECHO = 2;
+        public const Int32 HEARTBEAT = 1;
+        public const Int32 ECHO = 2;
     }
 
     public interface IPacketBase
@@ -20,12 +21,12 @@ namespace Server
 
     public class PacketHeader : IPacketBase
     {
-        public UInt32 PacketType;
-        public UInt32 PacketSize;
+        public Int32 PacketType;
+        public Int32 PacketSize;
 
         public PacketHeader(byte[] buffer) {
-            PacketType = BitConverter.ToUInt32(buffer, 0);
-            PacketSize = BitConverter.ToUInt32(buffer, 4);
+            PacketType = BitConverter.ToInt32(buffer, 0);
+            PacketSize = BitConverter.ToInt32(buffer, 4);
         }
 
         public byte[] GetSerialize() {
@@ -37,37 +38,49 @@ namespace Server
         }
 
         public int GetSize() {
-            return 8;
+            return sizeof(Int32) * 2;
+        }
+
+        public void GetSerialize(byte[] packetBuffer) {
+            PacketType = BitConverter.ToInt32(packetBuffer, 0);
+            PacketSize = BitConverter.ToInt32(packetBuffer, 4);
         }
     }
 
-    public class PacketBody : IPacketBase {
+    public class PacketBody : IPacketBase
+    {
         public byte[] PacketData;
-        
+
         public PacketBody(byte[] buffer) {
             PacketData = new byte[buffer.Length];
             buffer.CopyTo(PacketData, 0);
         }
-        public PacketBody(byte[] buffer, int offset) {
-            PacketData = new byte[buffer.Length-offset];
-            Array.Copy(buffer, offset, PacketData, 0, buffer.Length - offset);
+        public PacketBody(byte[] buffer, Int32 offset, Int32 packetSize) {
+            PacketData = new byte[packetSize];
+            Array.Copy(buffer, offset, PacketData, 0, packetSize);
         }
 
         public byte[] GetSerialize() {
             return PacketData;
         }
+
         public int GetSize() {
             return PacketData.Length;
         }
+
+        public void GetSerialize(byte[] packetBuffer, Int32 offset, Int32 bufferSize) {
+            Array.Copy(PacketData, 0, packetBuffer, offset, bufferSize - offset);
+        }
     }
 
-    public class Packet : IPacketBase {
+    public class Packet : IPacketBase
+    {
         PacketHeader packetHeader;
         PacketBody packetBody;
 
         public Packet(byte[] buffer) {
             packetHeader = new PacketHeader(buffer);
-            packetBody = new PacketBody(buffer, packetHeader.GetSize());
+            packetBody = new PacketBody(buffer, packetHeader.GetSize(), packetHeader.PacketSize);
         }
         public byte[] GetSerialize() {
             byte[] buffer = new byte[GetSize()];
@@ -81,11 +94,17 @@ namespace Server
             return packetHeader.GetSize() + packetBody.GetSize();
         }
 
-        public UInt32 GetPacketType() {
+        public Int32 GetPacketType() {
             return packetHeader.PacketType;
         }
 
+        public byte[] GetPacketData() {
+            return packetBody.PacketData;
+        }
 
+        public void GetSerialize(byte[] packetBuffer) {
+            packetHeader.GetSerialize(packetBuffer);
+            packetBody.GetSerialize(packetBuffer, 8, packetBuffer.Length);
+        }
     }
-
 }

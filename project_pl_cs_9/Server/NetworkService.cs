@@ -25,6 +25,8 @@ namespace Server
         }
 
         public void ListenStart() {
+            Console.WriteLine($"NetworkService ListenStart. endPoint:{_listenPoint.Address},{_listenPoint.Port}, acceptWaitCount:{_listenWaitCount}");
+
             try {
                 _listenSocket.Bind(_listenPoint);
                 _listenSocket.Listen(_listenWaitCount);
@@ -50,6 +52,7 @@ namespace Server
 
         void OnAcceptCompleted(object? sender, SocketAsyncEventArgs args) {
             if (null != args.AcceptSocket && SocketError.Success == args.SocketError) {
+                Console.WriteLine($"NetworkService OnAcceptCompleted. clientSocket:{args.AcceptSocket}");
                 PlayerSession session = new(args.AcceptSocket);
             } else {
                 Console.WriteLine(args.SocketError.ToString());

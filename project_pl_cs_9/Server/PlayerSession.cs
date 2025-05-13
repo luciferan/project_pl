@@ -15,7 +15,6 @@ namespace Server
         int _disconnected = 0;
 
         SocketAsyncEventArgs _recvArgs = new();
-        byte[] _recvBuffer = new byte[1024];
 
         object _sendLock = new();
         SocketAsyncEventArgs _sendArgs = new();
@@ -27,7 +26,7 @@ namespace Server
         public PlayerSession(Socket socket) {
             _socket = socket;
 
-            _recvArgs.SetBuffer(new byte[1024 * 10]);
+            _recvArgs.SetBuffer(new byte[1024 * 10], 0, 1024 * 10);
             _recvArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
             _recvArgs.UserToken = this;
 
@@ -38,13 +37,15 @@ namespace Server
         }
 
         void DoRecv() {
-            if (null != _socket && false != _socket.ReceiveAsync(_recvArgs)) {
+            Console.WriteLine($"PlayerSession DoRecv");
+            if (null != _socket && false == _socket.ReceiveAsync(_recvArgs)) {
                 OnRecvCompleted(null, _recvArgs);
             }
         }
 
         void OnRecvCompleted(object? sender, SocketAsyncEventArgs args) {
             if (SocketError.Success == args.SocketError && 0 < args.BytesTransferred && null != args.Buffer) {
+                Console.WriteLine($"PlayerSession OnRecvCompleted. recvSize:{args.BytesTransferred}");
                 _packetParser.DataParsing(args.Buffer, args.Offset, args.BytesTransferred, PacketHandler);
             } else {
                 Console.WriteLine($"Error: {args.SocketError}, BytesTransferred: {args.BytesTransferred}");
@@ -109,7 +110,7 @@ namespace Server
 
             try {
                 if (null != _socket && _socket.Connected) {
-                    Console.WriteLine($"Disconnect: {_socket.RemoteEndPoint}");
+                    Console.WriteLine($"PlayerSession Disconnect: {_socket.RemoteEndPoint}");
                     _socket.Shutdown(SocketShutdown.Both);
                 }
             } catch (ObjectDisposedException) {
@@ -128,7 +129,8 @@ namespace Server
             switch (packet.GetPacketType()) {
                 case ProtocolCS.HEARTBEAT:
                 case ProtocolCS.ECHO:
-                    Console.WriteLine($"RecvPacket {packet.GetPacketType()}");
+                    string recvMsg = Encoding.UTF8.GetString(packet.GetPacketData());
+                    Console.WriteLine($"RecvPacket {packet.GetPacketType()}: {recvMsg}");
                     break;
                 default:
                     break;
