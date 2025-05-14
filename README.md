@@ -4,7 +4,7 @@
 
 
 history
-# todo
+# todo - cpp
 - 로그 남기는 위치도 변경. 소스파일 위치에 남고 있었네
 - 패킷큐 구조 변경. 처리는 커맨드큐로 이동할수 있도록 수정
 - enum 전부 enum class로 변경
@@ -20,6 +20,18 @@ history
 - 모니터링 추가
 - c#으로 포팅
 - rapidjson이 utf-8 인코딩만 읽을수 있는 문제가 있어서 다른거로 바꿔야할까싶음
+
+# todo - c#
+- PlayerSession에서 PacketHandler까지 이어지는 부분을 끊어서 PacketQueue를 추가
+- PacketParser에서 PacketQueue에 넣고 PacketQueue에서 꺼내서 PacketHandler가 처리하도록 변경하고, 해당 부분을 ThreadPool로 제어되도록 수정. SemaphoreSlim을 사용하면 된다고함
+
+#20250515 - c#
+- recv받은 패킷을 그대로 send. 에코 처리 확인
+- PacketHandler를 class PacketHandler로 이동
+- PacketParser.DataParsing에 성공하면 PacketHandler.PacketProcess를 호출하도록 변경
+- PacketHandler는 함수포인터..가 아니라 딕셔너리에 PacketType과 Func<>로 리스트업해서 호출되도록 변경
+- 패킷 처리부분을 async task로 작성. 일반적인 동작은 되는듯하나 비동기 작동에 대한 테스트는 추후에 확인
+- async task를 사용한 영향으로 PlayerSession까지 줄줄이 async task로 변경됨
 
 #20250513 - c#
 - pending체크 잘못되서 recv못받던거 수정

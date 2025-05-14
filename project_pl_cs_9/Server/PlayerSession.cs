@@ -9,7 +9,7 @@ using System.ComponentModel.Design;
 
 namespace Server
 {
-    internal class PlayerSession
+    public class PlayerSession
     {
         Socket? _socket = null;
         int _disconnected = 0;
@@ -43,10 +43,10 @@ namespace Server
             }
         }
 
-        void OnRecvCompleted(object? sender, SocketAsyncEventArgs args) {
+        async void OnRecvCompleted(object? sender, SocketAsyncEventArgs args) {
             if (SocketError.Success == args.SocketError && 0 < args.BytesTransferred && null != args.Buffer) {
                 Console.WriteLine($"PlayerSession OnRecvCompleted. recvSize:{args.BytesTransferred}");
-                _packetParser.DataParsing(args.Buffer, args.Offset, args.BytesTransferred, PacketHandler);
+                await _packetParser.DataParsing(this, args.Buffer, args.Offset, args.BytesTransferred);
             } else {
                 Console.WriteLine($"Error: {args.SocketError}, BytesTransferred: {args.BytesTransferred}");
                 Disconnect();
@@ -61,6 +61,14 @@ namespace Server
             }
             DoSend();
         }
+
+        public void Send(Packet sendPacket) {
+            lock (_sendLock) {
+                _sendQueue.Enqueue(new ArraySegment<byte>(sendPacket.GetSerialize(), 0, sendPacket.GetSerialize().Length));
+            }
+            DoSend();
+        }
+
         void DoSend() {
             if (null == _socket || !_socket.Connected) {
                 return;
@@ -69,6 +77,7 @@ namespace Server
                 return;
             }
 
+            Console.WriteLine($"PlayerSession DoSend");
             lock (_sendLock) {
                 for (int cnt = 0; cnt < _sendQueue.Count && cnt < 10; ++cnt) {
                     var buffer = _sendQueue.Dequeue();
@@ -85,6 +94,7 @@ namespace Server
 
         void OnSendCompleted(object? sender, SocketAsyncEventArgs args) {
             if (SocketError.Success == args.SocketError && 0 < args.BytesTransferred) {
+                Console.WriteLine($"PlayerSession OnSendCompleted. sendSize:{args.BytesTransferred}");
                 try {
                     lock (_sendLock) {
                         _sendArgs.BufferList = null;
@@ -125,16 +135,17 @@ namespace Server
             }
         }
 
-        void PacketHandler(Packet packet) {
-            switch (packet.GetPacketType()) {
-                case ProtocolCS.HEARTBEAT:
-                case ProtocolCS.ECHO:
-                    string recvMsg = Encoding.UTF8.GetString(packet.GetPacketData());
-                    Console.WriteLine($"RecvPacket {packet.GetPacketType()}: {recvMsg}");
-                    break;
-                default:
-                    break;
-            }
-        }
+        //void PacketHandler(Packet packet) {
+        //    switch (packet.GetPacketType()) {
+        //        case ProtocolCS.HEARTBEAT:
+        //        case ProtocolCS.ECHO:
+        //            string recvMsg = Encoding.UTF8.GetString(packet.GetPacketData());
+        //            Console.WriteLine($"RecvPacket {packet.GetPacketType()}: {recvMsg}");
+        //            Send(packet);
+        //            break;
+        //        default:
+        //            break;
+        //    }
+        //}
     }
 }

@@ -20,7 +20,9 @@ namespace Server
 
         public delegate void CompletedPacketRecvCallback(Packet packet);
 
-        public bool DataParsing(byte[] buffer, int offset, int transferred, CompletedPacketRecvCallback callback) {
+        PacketHandler _packetHandler = PacketHandler.Instance;
+
+        public async Task<bool> DataParsing(PlayerSession player, byte[] buffer, int offset, int transferred) {
             if (maxBufferSize < currPos + transferred) {
                 return false;
             }
@@ -41,8 +43,7 @@ namespace Server
             readPos = packet.GetSize();
             BufferTrim();
 
-            //
-            callback(packet);
+            await _packetHandler.PacketProcess(player, packet);
             return true;
         }
 

@@ -15,6 +15,7 @@ namespace Client
 
             public byte[] PacketData;
 
+            public Packet() { }
             public Packet(byte[] packetData) {
                 PacketData = new byte[packetData.Length];
                 Array.Copy(packetData, 0, PacketData, 0, packetData.Length);
@@ -41,6 +42,19 @@ namespace Client
                 PacketSize = BitConverter.ToInt32(packetBuffer, 4);
                 Array.Copy(PacketData, 0, packetBuffer, 8, PacketSize);
             }
+
+            public void Parsing(byte[] packetBuffer) {
+                PacketType = BitConverter.ToInt32(packetBuffer, 0);
+                PacketSize = BitConverter.ToInt32(packetBuffer, 4);
+                PacketData = new byte[PacketSize];
+                Array.Copy(packetBuffer, 8, PacketData, 0, PacketSize);
+            }
+        }
+
+        static Packet DataParsing(byte[] buffer) {
+            Packet packet = new();
+            packet.Parsing(buffer);
+            return packet;
         }
 
         static void Main(string[] args) {
@@ -56,21 +70,32 @@ namespace Client
                 Console.WriteLine($"Connected to server at {serverIP}:{serverPort}");
 
                 NetworkStream stream = client.GetStream();
+                byte[] recvBuffer = new byte[1024];
 
-                for (int idx = 0; idx < 15; ++idx) {
-                    string echoMsg = $"Hello. This message seq {idx}";
-                    Packet packet = new(Encoding.Default.GetBytes(echoMsg));
+                Random random = new Random();
 
-                    stream.Write(packet.GetSerialize(), 0, packet.GetSize());
-                    Console.WriteLine($"Data sent to server. {echoMsg}");
+                //for (int idx = 0; idx < 15; ++idx) {
+                int idx = 0;
+                while (true) {
+                    ++idx;
+                    {
+                        string echoMsg = $"Hello. This message seq {idx}";
+                        Packet packet = new(Encoding.UTF8.GetBytes(echoMsg));
 
-                    Thread.Sleep(1500);
+                        stream.Write(packet.GetSerialize(), 0, packet.GetSize());
+                        Console.WriteLine($"Data sent to server: {echoMsg}");
+                    }
 
+                    {
+                        int bytesRead = stream.Read(recvBuffer, 0, recvBuffer.Length);
+                        Packet packet = DataParsing(recvBuffer);
+                        Array.Copy(recvBuffer, packet.GetSize(), recvBuffer, 0, recvBuffer.Length - packet.GetSize());
 
-                    //byte[] buffer = new byte[1024];
-                    //int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                    //string message = Encoding.Default.GetString(buffer, 0, bytesRead);
-                    //Console.WriteLine($"Received from server: {message}");
+                        string message = Encoding.UTF8.GetString(packet.PacketData);
+                        Console.WriteLine($"Received from server: {message}");
+                    }
+
+                    Thread.Sleep(random.Next(1000, 2000));
                 }
 
                 Console.WriteLine("Client close");
