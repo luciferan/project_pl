@@ -33,7 +33,11 @@ public:
         : CommandUnitBase(eCommandUnitPriority::Normal)
         , _zoneId(zoneId)
     {
-        MakeNetworkPacket((DWORD)packetData->type, (char*)packetData, packetSize, _sendBuffer, _sendBufferSize);
+        //MakeNetworkPacket((DWORD)packetData->type, (char*)packetData, packetSize, _sendBuffer, _sendBufferSize);
+        Serializer pack;
+        packetData->SerializeHead(pack);
+        packetData->Serialize(pack);
+        MakeNetworkPacket((DWORD)packetData->type, pack.GetBuffer(), pack.GetDataSize(), _sendBuffer, _sendBufferSize);
     }
     void Operator();
 };
@@ -50,7 +54,11 @@ public:
         : CommandUnitBase(eCommandUnitPriority::Normal)
         , _token(token)
     {
-        MakeNetworkPacket((DWORD)packetData->type, (char*)packetData, packetSize, _sendBuffer, _sendBufferSize);
+        //MakeNetworkPacket((DWORD)packetData->type, (char*)packetData, packetSize, _sendBuffer, _sendBufferSize);
+        Serializer pack;
+        packetData->SerializeHead(pack);
+        packetData->Serialize(pack);
+        MakeNetworkPacket((DWORD)packetData->type, pack.GetBuffer(), pack.GetDataSize(), _sendBuffer, _sendBufferSize);
     }
     SendPacketToUser(INT64 token, char* sendBuffer, DWORD sendBufferSize)
         : CommandUnitBase(eCommandUnitPriority::Normal)

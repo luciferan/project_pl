@@ -8,12 +8,18 @@
 //
 static const DWORD PACKET_CHECK_HEAD_KEY{0x00000000};
 static const DWORD PACKET_CHECK_TAIL_KEY{0x10000000};
+static const DWORD MAX_PACKET_SIZE = (1024 * 10);
 
 #pragma pack(push, 1)
 struct PacketBase
 {
-public:
     unsigned int type{0};
+
+    virtual void SerializeHead(Serializer &ser)
+    {
+        ser.Value(type);
+    }
+    virtual void Serialize(Serializer &ser) {}
 };
 #pragma pack(pop)
 
@@ -35,16 +41,16 @@ eResultCode MakeNetworkPacket(DWORD IN dwProtocol, char IN* pSendData, DWORD IN 
 eResultCode ParseNetworkData(CircleBuffer IN& Buffer, DWORD OUT& dwPacketLength);
 
 // packet handler ---------------------------------------------------------------
-template <class T, class PT>
+template <class T>
 class PacketFunctorBase
 {
 public:
     virtual ~PacketFunctorBase() {}
-    virtual bool Execute(T* obj, char* data) = 0;
+    virtual bool Execute(T* obj, char* data, DWORD length) = 0;
 };
 
-template <class T, class PT, class P>
-class PacketFunctor : public PacketFunctorBase<T, PT>
+template <class T, class P>
+class PacketFunctor : public PacketFunctorBase<T>
 {
 private:
     typedef bool (*PacketFunc)(T*, const P&);
@@ -57,20 +63,23 @@ public:
     {
         return (*_func)(obj, packet);
     }
-    virtual bool Execute(T* obj, char* data)
+    virtual bool Execute(T* obj, char* data, DWORD length)
     {
-        return Execute(obj, *((P*)data));
+        Serializer unpack(data, length);
+        P packet;
+        packet.SerializeHead(unpack);
+        packet.Serialize(unpack);
+        return Execute(obj, packet);
     }
 };
 
-template <class T, class PT, int PACKET_MAX>
+template <class T, int PACKET_MAX>
 class PacketHandler
 {
-    typedef PacketHandler<T, PT, PACKET_MAX> PacketHandlerType;
-    template <class T1, class PT1, int PM> friend void RegisterPacketHandlers(PacketHandler<T1, PT1, PM>& impl);
+    template <class T1, int PM> friend void RegisterPacketHandlers(PacketHandler<T1, PM>& impl);
 
 protected:
-    PacketFunctorBase<T, PT>* _packetFunctors[PACKET_MAX];
+    PacketFunctorBase<T>* _packetFunctors[PACKET_MAX];
 
 public:
     explicit PacketHandler()
@@ -86,20 +95,22 @@ public:
     {
         typedef bool (*PacketFunc)(T*, const P&);
 
-        static PacketFunctor<T, PT, P> functors[PACKET_MAX];
+        static PacketFunctor<T, P> functors[PACKET_MAX];
         P packet;
         unsigned int type = static_cast<unsigned int>(packet.type);
-        PacketFunctorBase<T, PT>* pf = new (&functors[type]) PacketFunctor<T, PT, P>(func);
+        PacketFunctorBase<T>* pf = new (&functors[type]) PacketFunctor<T, P>(func);
         _packetFunctors[type] = pf;
     }
 
-    bool Execute(T* obj, char* data)
+    bool Execute(T* obj, char* data, DWORD length)
     {
-        PacketBase* base = (PacketBase*)data;
-        unsigned int type = base->type;
+        Serializer unpack(data, length);
+        PacketBase base;
+        base.SerializeHead(unpack);
+        unsigned int type = base.type;
 
         if (_packetFunctors[type]) {
-            return _packetFunctors[type]->Execute(obj, data);
+            return _packetFunctors[type]->Execute(obj, data, length);
         }
         return false;
     }

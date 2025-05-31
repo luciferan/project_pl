@@ -24,7 +24,7 @@ class PacketStruct
     : public BufferBase
 {
 public:
-    Connector* pConnector{nullptr};
+    Connector* _pConnector{nullptr};
 
 public:
     PacketStruct() {};

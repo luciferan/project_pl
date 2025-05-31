@@ -46,23 +46,17 @@ void UserSession::Release()
     }
 }
 
-eResultCode UserSession::SendPacketData(DWORD dwProtocol, char* pData, DWORD dwSendDataSize)
-{
-    Log("info: SendPacketData");
-
-    char SendBuffer[MAX_PACKET_BUFFER_SIZE]{};
-    DWORD dwSendBufferSize{sizeof(SendBuffer)};
-    MakeNetworkPacket(dwProtocol, pData, dwSendDataSize, (char*)&SendBuffer, dwSendBufferSize);
-
-    return _pConnector->AddSendData((char*)&SendBuffer, dwSendBufferSize);
-}
-
 eResultCode UserSession::SendPacket(PacketBaseS2C* packetData, DWORD packetSize)
 {
     char sendBuffer[MAX_PACKET_BUFFER_SIZE]{};
     DWORD sendBufferSize = MAX_PACKET_BUFFER_SIZE;
-    MakeNetworkPacket((DWORD)packetData->type, (char*)packetData, packetSize, sendBuffer, sendBufferSize);
+    //MakeNetworkPacket((DWORD)packetData->type, (char*)packetData, packetSize, sendBuffer, sendBufferSize);
+    //return _pConnector->AddSendData(sendBuffer, sendBufferSize);
 
+    Serializer pack;
+    packetData->SerializeHead(pack);
+    packetData->Serialize(pack);
+    MakeNetworkPacket((DWORD)packetData->type, pack.GetBuffer(), pack.GetDataSize(), sendBuffer, sendBufferSize);
     return _pConnector->AddSendData(sendBuffer, sendBufferSize);
 }
 
@@ -111,7 +105,7 @@ bool UserSession::MessageProcess(char* pData, int nLen)
     DWORD dwProtocol = pHeader->dwProtocol;
     char* pPacketData = (char*)(pHeader + 1);
 
-    return _impl.Execute(this, pPacketData);
+    return _impl.Execute(this, pPacketData, dwPackethLength);
 }
 
 static bool C2S_Auth(UserSession* userSession, const CS_P_AUTH& packet)

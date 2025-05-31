@@ -100,7 +100,7 @@ unsigned int App::ProcessThread(stop_token token)
             net.Disconnect(pConnector);
         }
 
-        pConnector = pPacket->pConnector;
+        pConnector = pPacket->_pConnector;
         if (!pConnector) {
             RecvPacketQueue.ReleasePacketStruct(pPacket); //SAFE_DELETE(pPacket);
             continue;

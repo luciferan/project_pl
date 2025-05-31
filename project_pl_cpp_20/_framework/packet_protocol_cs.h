@@ -24,10 +24,11 @@ enum class PacketTypeC2S : unsigned int
 struct PacketBaseC2S : public PacketBase
 {
 public:
-    PacketBaseC2S(PacketTypeC2S type) 
+    PacketBaseC2S(PacketTypeC2S type)
     {
         this->type = static_cast<unsigned int>(type);
     }
+    void Serialize(Serializer& ser) {}
 };
 
 struct CS_P_AUTH : public PacketBaseC2S
@@ -39,6 +40,10 @@ public:
     void SetId(int id)
     {
         this->id = id;
+    }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(id);
     }
 };
 
@@ -52,6 +57,10 @@ public:
     {
         this->token = token;
     }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(token);
+    }
 };
 
 struct CS_P_LEAVE : public PacketBaseC2S
@@ -63,6 +72,10 @@ public:
     void SetToken(INT64 token)
     {
         this->token = token;
+    }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(token);
     }
 };
 
@@ -76,6 +89,11 @@ public:
     {
         this->x = x;
         this->y = y;
+    }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(x);
+        ser.Value(y);
     }
 };
 
@@ -91,25 +109,36 @@ public:
         this->targetToken = targetToken;
         this->interactionType = interactionType;
     }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(targetToken);
+        ser.Value(interactionType);
+    }
 };
 
 struct CS_P_HEARTBEAT : public PacketBaseC2S
 {
 public:
     CS_P_HEARTBEAT() : PacketBaseC2S(PacketTypeC2S::heartbeat) {}
+    void Serialize(Serializer& ser) {}
 };
 
 struct CS_P_ECHO : public PacketBaseC2S
 {
 public:
+    int echoDataSize{0};
     char echoData[32]{};
-    int echoDataSize = 0;
 
     CS_P_ECHO() : PacketBaseC2S(PacketTypeC2S::echo) {}
     void SetData(const char* data, int size)
     {
-        memcpy_s(echoData, 32, data, size);
         echoDataSize = min(32, size);
+        memcpy_s(echoData, 32, data, size);
+    }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(echoDataSize);
+        ser.Value(echoData, echoDataSize);
     }
 };
 

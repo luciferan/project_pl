@@ -25,6 +25,12 @@ history
 - PlayerSession에서 PacketHandler까지 이어지는 부분을 끊어서 PacketQueue를 추가
 - PacketParser에서 PacketQueue에 넣고 PacketQueue에서 꺼내서 PacketHandler가 처리하도록 변경하고, 해당 부분을 ThreadPool로 제어되도록 수정. SemaphoreSlim을 사용하면 된다고함
 
+
+#20250601 - cpp
+- packet serializer 추가
+- serialize로 send 하도록 변경
+- PacketFunctor 정리
+
 #20250515 - c#
 - recv받은 패킷을 그대로 send. 에코 처리 확인
 - PacketHandler를 class PacketHandler로 이동

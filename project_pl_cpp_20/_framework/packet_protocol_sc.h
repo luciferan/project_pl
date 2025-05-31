@@ -29,6 +29,7 @@ public:
     {
         this->type = static_cast<unsigned int>(type);
     }
+    virtual void Serialize(Serializer& ser) {}
 };
 
 struct SC_P_AUTH_RESULT : public PacketBaseS2C
@@ -42,6 +43,11 @@ public:
     {
         this->id = id;
         this->token = token;
+    }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(id);
+        ser.Value(token);
     }
 };
 
@@ -57,6 +63,12 @@ public:
         this->token = token;
         this->x = x;
         this->y = y;
+    }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(token);
+        ser.Value(x);
+        ser.Value(y);
     }
 };
 
@@ -79,6 +91,13 @@ public:
         this->data[this->count++] = data;
         return MAX_SEND_COUNT_CHARACTER_DB_DATA >= this->count;
     }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(count);
+        for (int idx = 0; idx < count; ++idx) {
+            data[idx].Serialize(ser);
+        }
+    }
 };
 
 struct SC_P_LEAVE : public PacketBaseS2C
@@ -90,6 +109,10 @@ public:
     void SetToken(INT64 token)
     {
         this->token = token;
+    }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(token);
     }
 };
 
@@ -106,6 +129,12 @@ public:
         this->x = x;
         this->y = y;
     }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(token);
+        ser.Value(x);
+        ser.Value(y);
+    }
 };
 
 struct SC_P_INTERACTION : public PacketBaseS2C
@@ -113,14 +142,20 @@ struct SC_P_INTERACTION : public PacketBaseS2C
 public:
     INT64 token{0};
     INT64 targetToken{0};
-    int type{0};
+    int interactionType{0};
 
     SC_P_INTERACTION() : PacketBaseS2C(PacketTypeS2C::interaction) {}
     void SetInteraction(INT64 token, INT64 targetToken, int type)
     {
         this->token = token;
         this->targetToken = targetToken;
-        this->type = type;
+        this->interactionType = type;
+    }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(token);
+        ser.Value(targetToken);
+        ser.Value(interactionType);
     }
 };
 
@@ -128,21 +163,28 @@ struct SC_P_HEARTBEAT : public PacketBaseS2C
 {
 public:
     SC_P_HEARTBEAT() : PacketBaseS2C(PacketTypeS2C::heartbeat) {}
+    void Serialize(Serializer& ser) {}
 };
 
 struct SC_P_ECHO : public PacketBaseS2C
 {
 public:
     INT64 token{0};
+    int echoDataSize{0};
     char echoData[32]{};
-    int echoDataSize = 0;
 
     SC_P_ECHO() : PacketBaseS2C(PacketTypeS2C::echo) {}
     void SetData(INT64 token, const char* data, int size)
     {
         this->token = token;
-        memcpy_s(echoData, 32, data, size);
         echoDataSize = min(32, size);
+        memcpy_s(echoData, 32, data, size);
+    }
+    void Serialize(Serializer& ser)
+    {
+        ser.Value(token);
+        ser.Value(echoDataSize);
+        ser.Value(echoData, echoDataSize);
     }
 };
 

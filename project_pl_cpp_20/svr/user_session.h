@@ -69,7 +69,6 @@ public:
     Character* GetCharacter() { return &_nub; }
 
     //
-    eResultCode SendPacketData(DWORD dwProtocol, char* pData, DWORD dwDataSize);
     eResultCode SendPacket(PacketBaseS2C* packetData, DWORD packetSize);
     eResultCode SendPacket(char* packetBuffer, DWORD packetSize);
 
@@ -78,7 +77,7 @@ public:
     bool MessageProcess(char* pData, int nLen);
 
 public:
-    typedef PacketHandler<UserSession, PacketTypeC2S, static_cast<int>(PacketTypeC2S::Max)> HandlerImpl;
+    typedef PacketHandler<UserSession, static_cast<int>(PacketTypeC2S::Max)> HandlerImpl;
     static HandlerImpl _impl;
 };
 

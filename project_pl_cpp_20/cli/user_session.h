@@ -46,7 +46,6 @@ public:
     INT64 GetToken() { return _token; }
 
     //
-    eResultCode SendPacketData(DWORD dwProtocol, char* pData, DWORD dwDataSize);
     eResultCode SendPacket(PacketBaseC2S* packetData, DWORD packetSize);
 
     //
@@ -63,7 +62,7 @@ public:
     int MessageProcess(char* pData, int nLen);
 
 public:
-    typedef PacketHandler<UserSession, PacketTypeS2C, static_cast<int>(PacketTypeS2C::Max)> HandlerImpl;
+    typedef PacketHandler<UserSession, static_cast<int>(PacketTypeS2C::Max)> HandlerImpl;
     static HandlerImpl _impl;
 };
 

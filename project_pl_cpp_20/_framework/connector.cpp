@@ -85,7 +85,6 @@ void Connector::ConvertSocket2IP()
     mbstowcs_s(&convert, _wcsDomain, NetworkConst::MAX_LEN_IP4_STRING, _szDomain, NetworkConst::MAX_LEN_IP4_STRING);
 }
 
-
 eResultCode Connector::AddSendData(char* pSendData, DWORD dwSendDataSize)
 {
     return Network::GetInstance().Write(this, pSendData, dwSendDataSize);
@@ -202,7 +201,7 @@ int Connector::RecvComplete(DWORD dwRecvSize)
             return -1;
         }
 
-        pPacket->pConnector = this;
+        pPacket->_pConnector = this;
         pPacket->_nDataSize = _RecvDataBuffer.Read(pPacket->_pBuffer, nPacketLength);
         _RecvDataBuffer.Erase(nPacketLength);
 

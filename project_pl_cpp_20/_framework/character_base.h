@@ -3,6 +3,7 @@
 #define __CHARACTER_BASE_H__
 
 #include "stdafx.h"
+#include "./buffer.h"
 
 #include <tuple>
 #include <atomic>
@@ -24,12 +25,25 @@ struct Position
     const int GetZoneId() { return zoneId; }
     const int GetPosX() { return posX;}
     const int GetPosY() { return posY; }
+
+    void Serialize(Serializer &ser)
+    {
+        ser.Value(zoneId);
+        ser.Value(posX);
+        ser.Value(posY);
+    }
 };
 
 struct CharacterDbData
 {
     INT64 _token{0};
     Position _pos;
+
+    void Serialize(Serializer &ser)
+    {
+        ser.Value(_token);
+        _pos.Serialize(ser);
+    }
 };
 
 class Character

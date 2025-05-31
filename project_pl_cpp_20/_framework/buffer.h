@@ -63,6 +63,109 @@ public:
     ULONG GetBufferSize() { return _nBufferSize; }
     ULONG GetDataSize() { return _nDataSize; }
     ULONG GetEmptySize() { return _nBufferSize - _nDataSize; }
+
+    ULONG Write(char* pSrc, size_t len)
+    {
+        if (GetEmptySize() < len) {
+            return -1;
+        }
+
+        memcpy(_pWrite, pSrc, len);
+        _pWrite += len;
+        _nDataSize += (ULONG)len;
+        return GetEmptySize();
+    }
+    ULONG Read(char* pDes, size_t len)
+    {
+        if (GetDataSize() < len) {
+            return -1;
+        }
+        memcpy(pDes, _pRead, len);
+        _pRead += len;
+        _nDataSize -= (ULONG)len;
+        return GetDataSize();
+    }
+};
+
+//
+class Serializer
+    : public BufferBase
+{
+private:
+    bool forSend{true};
+
+public:
+    Serializer() {};
+    Serializer(char* src, DWORD length) : forSend(false)
+    {
+        Write(src, length);
+    };
+    virtual ~Serializer() {};
+
+    void Value(char& value)
+    {
+        if (forSend) {
+            Write((char*)&value, sizeof(char));
+        } else {
+            Read((char*)&value, sizeof(char));
+        }
+    }
+    void Value(short& value)
+    {
+        if (forSend) {
+            Write((char*)&value, sizeof(short));
+        } else {
+            Read((char*)&value, sizeof(short));
+        }
+    }
+    void Value(int& value)
+    {
+        if (forSend) {
+            Write((char*)&value, sizeof(int));
+        } else {
+            Read((char*)&value, sizeof(int));
+        }
+    }
+    void Value(unsigned int& value)
+    {
+        if (forSend) {
+            Write((char*)&value, sizeof(unsigned int));
+        } else {
+            Read((char*)&value, sizeof(unsigned int));
+        }
+    }
+    void Value(INT64& value)
+    {
+        if (forSend) {
+            Write((char*)&value, sizeof(INT64));
+        } else {
+            Read((char*)&value, sizeof(INT64));
+        }
+    }
+    void Value(float& value)
+    {
+        if (forSend) {
+            Write((char*)&value, sizeof(float));
+        } else {
+            Read((char*)&value, sizeof(float));
+        }
+    }
+    void Value(DOUBLE& value)
+    {
+        if (forSend) {
+            Write((char*)&value, sizeof(DOUBLE));
+        } else {
+            Read((char*)&value, sizeof(DOUBLE));
+        }
+    }
+    void Value(char* pData, int len)
+    {
+        if (forSend) {
+            Write(pData, len);
+        } else {
+            Read(pData, len);
+        }
+    }
 };
 
 //
