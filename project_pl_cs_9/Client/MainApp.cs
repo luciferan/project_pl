@@ -10,10 +10,9 @@ namespace Client
     {
         public class Packet
         {
-            public Int32 PacketType;
-            public Int32 PacketSize;
-
-            public byte[] PacketData;
+            public int PacketType { get; set; }
+            public int PacketSize { get; set; }
+            public byte[] PacketData { get; set; } = Array.Empty<byte>();
 
             public Packet() { }
             public Packet(byte[] packetData) {

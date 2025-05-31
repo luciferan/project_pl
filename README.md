@@ -20,18 +20,22 @@ history
 - 모니터링 추가
 - c#으로 포팅
 - rapidjson이 utf-8 인코딩만 읽을수 있는 문제가 있어서 다른거로 바꿔야할까싶음
+- 동기화서버는 rpc로 작성
 
 # todo - c#
-- PlayerSession에서 PacketHandler까지 이어지는 부분을 끊어서 PacketQueue를 추가
-- PacketParser에서 PacketQueue에 넣고 PacketQueue에서 꺼내서 PacketHandler가 처리하도록 변경하고, 해당 부분을 ThreadPool로 제어되도록 수정. SemaphoreSlim을 사용하면 된다고함
+- 공용부분을 분리
 
+
+#20250601 - cs
+- PacketHandler를 TaskScheduler로 변경
+- PacketParser에서 파싱되는 즉시 PacketHandler에 밀어넣고 PacketHandler에서 Task로 생성해서 처리
 
 #20250601 - cpp
 - packet serializer 추가
 - serialize로 send 하도록 변경
 - PacketFunctor 정리
 
-#20250515 - c#
+#20250515 - cs
 - recv받은 패킷을 그대로 send. 에코 처리 확인
 - PacketHandler를 class PacketHandler로 이동
 - PacketParser.DataParsing에 성공하면 PacketHandler.PacketProcess를 호출하도록 변경
@@ -39,7 +43,7 @@ history
 - 패킷 처리부분을 async task로 작성. 일반적인 동작은 되는듯하나 비동기 작동에 대한 테스트는 추후에 확인
 - async task를 사용한 영향으로 PlayerSession까지 줄줄이 async task로 변경됨
 
-#20250513 - c#
+#20250513 - cs
 - pending체크 잘못되서 recv못받던거 수정
 - packet recv받는 부분까지 확인
 

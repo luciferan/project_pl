@@ -21,8 +21,8 @@ namespace Server
 
     public class PacketHeader : IPacketBase
     {
-        public Int32 PacketType;
-        public Int32 PacketSize;
+        public Int32 PacketType { get; set; }
+        public Int32 PacketSize { get; set; }
 
         public PacketHeader(byte[] buffer) {
             PacketType = BitConverter.ToInt32(buffer, 0);

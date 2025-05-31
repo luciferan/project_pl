@@ -43,7 +43,7 @@ namespace Server
             readPos = packet.GetSize();
             BufferTrim();
 
-            await _packetHandler.PacketProcess(player, packet);
+            PacketHandler.Instance.Enqueue(player, packet);
             return true;
         }
 
