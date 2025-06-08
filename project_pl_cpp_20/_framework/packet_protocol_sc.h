@@ -5,10 +5,11 @@
 #include "./packet.h"
 #include "../_framework/character_base.h"
 
-enum class PacketTypeS2C : unsigned int
+enum class PacketTypeS2C : UINT32
 {
     invalid = 0,
-    auth_result,
+
+    auth_result = 1,
 
     enter,
     enter_character,
@@ -27,7 +28,7 @@ struct PacketBaseS2C : public PacketBase
 public:
     PacketBaseS2C(PacketTypeS2C type)
     {
-        this->type = static_cast<unsigned int>(type);
+        this->ui32PacketType = static_cast<UINT32>(type);
     }
     virtual void Serialize(Serializer& ser) {}
 };
@@ -35,11 +36,11 @@ public:
 struct SC_P_AUTH_RESULT : public PacketBaseS2C
 {
 public:
-    int id{0};
+    INT32 id{0};
     INT64 token{0};
 
     SC_P_AUTH_RESULT() : PacketBaseS2C(PacketTypeS2C::auth_result) {}
-    void SetToken(int id, INT64 token)
+    void SetToken(INT32 id, INT64 token)
     {
         this->id = id;
         this->token = token;
@@ -55,10 +56,10 @@ struct SC_P_ENTER : public PacketBaseS2C
 {
 public:
     INT64 token{0};
-    int x{0}, y{0};
+    INT32 x{0}, y{0};
 
     SC_P_ENTER() : PacketBaseS2C(PacketTypeS2C::enter) {}
-    void SetPos(INT64 token, int x, int y)
+    void SetPos(INT64 token, INT32 x, INT32 y)
     {
         this->token = token;
         this->x = x;
@@ -76,7 +77,7 @@ struct SC_P_ENTER_CHARACTER_LIST : public PacketBaseS2C
 {
     static const int MAX_SEND_COUNT_CHARACTER_DB_DATA = 20;
 public:
-    int count{0};
+    INT32 count{0};
     CharacterDbData data[MAX_SEND_COUNT_CHARACTER_DB_DATA]{};
 
     SC_P_ENTER_CHARACTER_LIST() : PacketBaseS2C(PacketTypeS2C::enter_character) {}
@@ -120,10 +121,10 @@ struct SC_P_MOVE : public PacketBaseS2C
 {
 public:
     INT64 token{0};
-    int x{0}, y{0};
+    INT32 x{0}, y{0};
 
     SC_P_MOVE() : PacketBaseS2C(PacketTypeS2C::move) {}
-    void SetPos(INT64 token, int x, int y)
+    void SetPos(INT64 token, INT32 x, INT32 y)
     {
         this->token = token;
         this->x = x;
@@ -142,10 +143,10 @@ struct SC_P_INTERACTION : public PacketBaseS2C
 public:
     INT64 token{0};
     INT64 targetToken{0};
-    int interactionType{0};
+    INT32 interactionType{0};
 
     SC_P_INTERACTION() : PacketBaseS2C(PacketTypeS2C::interaction) {}
-    void SetInteraction(INT64 token, INT64 targetToken, int type)
+    void SetInteraction(INT64 token, INT64 targetToken, INT32 type)
     {
         this->token = token;
         this->targetToken = targetToken;
@@ -168,17 +169,18 @@ public:
 
 struct SC_P_ECHO : public PacketBaseS2C
 {
+    static const int MAX_ECHO_DATA_LENGTH = 32;
 public:
     INT64 token{0};
-    int echoDataSize{0};
-    char echoData[32]{};
+    INT32 echoDataSize{0};
+    char echoData[MAX_ECHO_DATA_LENGTH]{};
 
     SC_P_ECHO() : PacketBaseS2C(PacketTypeS2C::echo) {}
-    void SetData(INT64 token, const char* data, int size)
+    void SetData(INT64 token, const char* data, INT32 size)
     {
         this->token = token;
-        echoDataSize = min(32, size);
-        memcpy_s(echoData, 32, data, size);
+        echoDataSize = min(MAX_ECHO_DATA_LENGTH, size);
+        memcpy_s(echoData, MAX_ECHO_DATA_LENGTH, data, size);
     }
     void Serialize(Serializer& ser)
     {

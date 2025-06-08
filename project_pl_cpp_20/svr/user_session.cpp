@@ -56,7 +56,7 @@ eResultCode UserSession::SendPacket(PacketBaseS2C* packetData, DWORD packetSize)
     Serializer pack;
     packetData->SerializeHead(pack);
     packetData->Serialize(pack);
-    MakeNetworkPacket((DWORD)packetData->type, pack.GetBuffer(), pack.GetDataSize(), sendBuffer, sendBufferSize);
+    MakeNetworkPacket(pack.GetBuffer(), pack.GetDataSize(), sendBuffer, sendBufferSize, 0);
     return _pConnector->AddSendData(sendBuffer, sendBufferSize);
 }
 
@@ -101,8 +101,7 @@ bool UserSession::MessageProcess(char* pData, int nLen)
     }
 
     PacketHead* pHeader = (PacketHead*)pData;
-    DWORD dwPackethLength = pHeader->dwLength - sizeof(PacketHead) - sizeof(PacketTail);
-    DWORD dwProtocol = pHeader->dwProtocol;
+    DWORD dwPackethLength = pHeader->ui32Length - sizeof(PacketHead) - sizeof(PacketTail);
     char* pPacketData = (char*)(pHeader + 1);
 
     return _impl.Execute(this, pPacketData, dwPackethLength);
@@ -226,7 +225,7 @@ static bool C2S_Echo(UserSession* userSession, const CS_P_ECHO& packet)
     return true;
 }
 
-void RegisterPacketHandlers(UserSession::HandlerImpl &impl)
+void RegisterPacketHandlers(UserSession::HandlerImpl& impl)
 {
     impl.Register(&C2S_Auth);
     impl.Register(&C2S_Enter);

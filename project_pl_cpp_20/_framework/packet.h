@@ -6,39 +6,39 @@
 #include "./buffer.h"
 
 //
-static const DWORD PACKET_CHECK_HEAD_KEY{0x00000000};
-static const DWORD PACKET_CHECK_TAIL_KEY{0x10000000};
-static const DWORD MAX_PACKET_SIZE = (1024 * 10);
-
-#pragma pack(push, 1)
-struct PacketBase
-{
-    unsigned int type{0};
-
-    virtual void SerializeHead(Serializer &ser)
-    {
-        ser.Value(type);
-    }
-    virtual void Serialize(Serializer &ser) {}
-};
-#pragma pack(pop)
+static const UINT32 PACKET_CHECK_HEAD_KEY{0x00000000};
+static const UINT32 PACKET_CHECK_TAIL_KEY{0x10000000};
+static const UINT32 MAX_PACKET_SIZE{1024 * 10};
 
 //
 struct PacketHead
 {
-    DWORD dwCheckHead{0};
-    DWORD dwLength{0}; // = sizeof(Head) + sizeof(Body) + sizeof(Tail)
-    DWORD dwProtocol{0};
+    UINT32 ui32CheckHead{0};
+    UINT32 ui32Length{0}; // = sizeof(Head) + sizeof(Body) + sizeof(Tail)
 };
+
+struct PacketBody
+{
+    UINT32 ui32PacketType{0};
+
+    virtual void SerializeHead(Serializer& ser)
+    {
+        ser.Value(ui32PacketType);
+    }
+    virtual void Serialize(Serializer& ser) {};
+};
+using PacketBase = PacketBody;
 
 struct PacketTail
 {
-    DWORD dwCheckTail{0};
+    UINT32 ui32CheckTail{0};
+    UINT32 ui32PacketSeq;
+    UINT32 ui32PacketTime;
 };
 
 //
-eResultCode MakeNetworkPacket(DWORD IN dwProtocol, char IN* pSendData, DWORD IN dwSendDataSize, char OUT* pSendBuffer, DWORD IN OUT& dwSendBufferSize);
-eResultCode ParseNetworkData(CircleBuffer IN& Buffer, DWORD OUT& dwPacketLength);
+eResultCode MakeNetworkPacket(char* pSendData, DWORD dwSendDataSize, char OUT* pSendBuffer, DWORD IN OUT& dwSendBufferSize, UINT32 packetSeq);
+eResultCode ParseNetworkData(CircleBuffer& Buffer, DWORD OUT& dwPacketLength);
 
 // packet handler ---------------------------------------------------------------
 template <class T>
@@ -97,7 +97,7 @@ public:
 
         static PacketFunctor<T, P> functors[PACKET_MAX];
         P packet;
-        unsigned int type = static_cast<unsigned int>(packet.type);
+        unsigned int type = static_cast<unsigned int>(packet.ui32PacketType);
         PacketFunctorBase<T>* pf = new (&functors[type]) PacketFunctor<T, P>(func);
         _packetFunctors[type] = pf;
     }
@@ -107,7 +107,7 @@ public:
         Serializer unpack(data, length);
         PacketBase base;
         base.SerializeHead(unpack);
-        unsigned int type = base.type;
+        unsigned int type = base.ui32PacketType;
 
         if (_packetFunctors[type]) {
             return _packetFunctors[type]->Execute(obj, data, length);

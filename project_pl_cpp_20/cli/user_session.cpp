@@ -31,7 +31,7 @@ eResultCode UserSession::SendPacket(PacketBaseC2S* packetData, DWORD packetSize)
     Serializer pack;
     packetData->SerializeHead(pack);
     packetData->Serialize(pack);
-    MakeNetworkPacket((DWORD)packetData->type, pack.GetBuffer(), pack.GetDataSize(), sendBuffer, sendBufferSize);
+    MakeNetworkPacket(pack.GetBuffer(), pack.GetDataSize(), sendBuffer, sendBufferSize, 0);
     return _pConnector->AddSendData(sendBuffer, sendBufferSize);
 }
 
@@ -92,8 +92,7 @@ int UserSession::MessageProcess(char* pData, int nLen)
     }
 
     PacketHead* pHeader = (PacketHead*)pData;
-    DWORD dwPackethLength = pHeader->dwLength - sizeof(PacketHead) - sizeof(PacketTail);
-    DWORD dwProtocol = pHeader->dwProtocol;
+    DWORD dwPackethLength = pHeader->ui32Length - sizeof(PacketHead) - sizeof(PacketTail);
     char* pPacketData = (char*)(pHeader + 1);
 
     return _impl.Execute(this, pPacketData, dwPackethLength);
@@ -129,7 +128,7 @@ bool S2C_Enter(UserSession* userSession, const SC_P_ENTER& packet)
     character->SetPos(packet.x, packet.y);
     auto [x, y] = character->GetPos();
 
-    if( CharacterMgr::GetInstance().IsPlayerCharacter(character) ){
+    if (CharacterMgr::GetInstance().IsPlayerCharacter(character)) {
         cout << format("입장. 현재위치: {}:{}", x, y) << endl;
     } else {
         cout << format("{} 입장. 위치: {}:{}", token, x, y) << endl;
@@ -212,11 +211,11 @@ bool S2C_Interaction(UserSession* userSession, const SC_P_INTERACTION& packet)
     }
 
     if (CharacterMgr::GetInstance().IsPlayerCharacter(ch)) {
-        cout << "당신은 " << targetToken << "에게 {" << packet.type << "} 행동." << endl;
-    } else if( CharacterMgr::GetInstance().IsPlayerCharacter(targetCh)) {
-        cout << targetToken << "이 당신에게 {" << packet.type << "} 행동." << endl;
+        cout << "당신은 " << targetToken << "에게 {" << packet.interactionType << "} 행동." << endl;
+    } else if (CharacterMgr::GetInstance().IsPlayerCharacter(targetCh)) {
+        cout << targetToken << "이 당신에게 {" << packet.interactionType << "} 행동." << endl;
     } else {
-        cout << token << "가 " << targetToken << "에게 {" << packet.type << "} 행동." << endl;
+        cout << token << "가 " << targetToken << "에게 {" << packet.interactionType << "} 행동." << endl;
     }
 
     return true;
@@ -233,7 +232,7 @@ bool S2C_Heartbeat(UserSession* userSession, const SC_P_HEARTBEAT& packet)
 
 bool S2C_Echo(UserSession* userSession, const SC_P_ECHO& packet)
 {
-    cout << packet.token <<  ": " << packet.echoData << endl;
+    cout << packet.token << ": " << packet.echoData << endl;
     return true;
 }
 

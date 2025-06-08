@@ -85,8 +85,8 @@ unsigned int App::ProcessThread(stop_token token)
         }
 
         PacketHead* pHead = (PacketHead*)pPacket->_pBuffer;
-        PacketTail* pTail = (PacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(PacketTail));
-        if (PACKET_CHECK_TAIL_KEY != pTail->dwCheckTail) {
+        PacketTail* pTail = (PacketTail*)(pPacket->_pBuffer + pHead->ui32Length - sizeof(PacketTail));
+        if (PACKET_CHECK_TAIL_KEY != pTail->ui32CheckTail) {
             LogError("invalid packet");
             net.Disconnect(pConnector);
         }
@@ -100,12 +100,12 @@ unsigned int App::ProcessThread(stop_token token)
         if (pUserSession = (UserSession*)pConnector->GetParam()) {
             pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
         } else {
-            PacketHead* pHeader = (PacketHead*)pPacket->_pBuffer;
-            if ((PacketTypeS2C)pHeader->dwProtocol == PacketTypeS2C::auth_result) {
-            } else {
-                LogError("invalid packet");
-                net.Disconnect(pConnector);
-            }
+            //PacketHead* pHeader = (PacketHead*)pPacket->_pBuffer;
+            //if ((PacketTypeSrcToDst)pHeader->ui32ProtocolFromTo == PacketTypeSrcToDst::WorldToClient) {
+            //} else {
+            //    LogError("invalid packet");
+            //    net.Disconnect(pConnector);
+            //}
         }
 
         recvPacketQueue.ReleasePacketStruct(pPacket);

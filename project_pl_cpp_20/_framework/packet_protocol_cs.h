@@ -4,11 +4,11 @@
 
 #include "./packet.h"
 
-enum class PacketTypeC2S : unsigned int
+enum class PacketTypeC2S : UINT32
 {
     invalid = 0,
 
-    auth,
+    auth = 1,
 
     enter,
     leave,
@@ -26,7 +26,7 @@ struct PacketBaseC2S : public PacketBase
 public:
     PacketBaseC2S(PacketTypeC2S type)
     {
-        this->type = static_cast<unsigned int>(type);
+        this->ui32PacketType = static_cast<UINT32>(type);
     }
     void Serialize(Serializer& ser) {}
 };
@@ -34,10 +34,10 @@ public:
 struct CS_P_AUTH : public PacketBaseC2S
 {
 public:
-    int id{0};
+    INT32 id{0};
 
     CS_P_AUTH() : PacketBaseC2S(PacketTypeC2S::auth) {}
-    void SetId(int id)
+    void SetId(INT32 id)
     {
         this->id = id;
     }
@@ -82,10 +82,10 @@ public:
 struct CS_P_MOVE : public PacketBaseC2S
 {
 public:
-    int x{0}, y{0};
+    INT32 x{0}, y{0};
 
     CS_P_MOVE() : PacketBaseC2S(PacketTypeC2S::move) {}
-    void SetPos(int x, int y)
+    void SetPos(INT32 x, INT32 y)
     {
         this->x = x;
         this->y = y;
@@ -101,10 +101,10 @@ struct CS_P_INTERACTION : public PacketBaseC2S
 {
 public:
     INT64 targetToken{0};
-    int interactionType{0};
+    INT32 interactionType{0};
 
     CS_P_INTERACTION() : PacketBaseC2S(PacketTypeC2S::interaction) {}
-    void SetInteraction(INT64 targetToken, int interactionType)
+    void SetInteraction(INT64 targetToken, INT32 interactionType)
     {
         this->targetToken = targetToken;
         this->interactionType = interactionType;
@@ -125,15 +125,16 @@ public:
 
 struct CS_P_ECHO : public PacketBaseC2S
 {
+    static const int MAX_ECHO_DATA_LENGTH = 32;
 public:
-    int echoDataSize{0};
-    char echoData[32]{};
+    INT32 echoDataSize{0};
+    char echoData[MAX_ECHO_DATA_LENGTH]{};
 
     CS_P_ECHO() : PacketBaseC2S(PacketTypeC2S::echo) {}
-    void SetData(const char* data, int size)
+    void SetData(const char* data, INT32 size)
     {
-        echoDataSize = min(32, size);
-        memcpy_s(echoData, 32, data, size);
+        echoDataSize = min(MAX_ECHO_DATA_LENGTH, size);
+        memcpy_s(echoData, MAX_ECHO_DATA_LENGTH, data, size);
     }
     void Serialize(Serializer& ser)
     {

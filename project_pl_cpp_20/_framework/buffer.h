@@ -102,36 +102,36 @@ public:
     };
     virtual ~Serializer() {};
 
-    void Value(char& value)
+    void Value(INT8& value)
     {
         if (forSend) {
-            Write((char*)&value, sizeof(char));
+            Write((char*)&value, sizeof(INT8));
         } else {
-            Read((char*)&value, sizeof(char));
+            Read((char*)&value, sizeof(INT8));
         }
     }
-    void Value(short& value)
+    void Value(INT16& value)
     {
         if (forSend) {
-            Write((char*)&value, sizeof(short));
+            Write((char*)&value, sizeof(INT16));
         } else {
-            Read((char*)&value, sizeof(short));
+            Read((char*)&value, sizeof(INT16));
         }
     }
-    void Value(int& value)
+    void Value(INT32& value)
     {
         if (forSend) {
-            Write((char*)&value, sizeof(int));
+            Write((char*)&value, sizeof(INT32));
         } else {
-            Read((char*)&value, sizeof(int));
+            Read((char*)&value, sizeof(INT32));
         }
     }
-    void Value(unsigned int& value)
+    void Value(UINT32& value)
     {
         if (forSend) {
-            Write((char*)&value, sizeof(unsigned int));
+            Write((char*)&value, sizeof(UINT32));
         } else {
-            Read((char*)&value, sizeof(unsigned int));
+            Read((char*)&value, sizeof(UINT32));
         }
     }
     void Value(INT64& value)
@@ -142,12 +142,12 @@ public:
             Read((char*)&value, sizeof(INT64));
         }
     }
-    void Value(float& value)
+    void Value(FLOAT& value)
     {
         if (forSend) {
-            Write((char*)&value, sizeof(float));
+            Write((char*)&value, sizeof(FLOAT));
         } else {
-            Read((char*)&value, sizeof(float));
+            Read((char*)&value, sizeof(FLOAT));
         }
     }
     void Value(DOUBLE& value)

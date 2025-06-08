@@ -37,7 +37,7 @@ public:
         Serializer pack;
         packetData->SerializeHead(pack);
         packetData->Serialize(pack);
-        MakeNetworkPacket((DWORD)packetData->type, pack.GetBuffer(), pack.GetDataSize(), _sendBuffer, _sendBufferSize);
+        MakeNetworkPacket(pack.GetBuffer(), pack.GetDataSize(), _sendBuffer, _sendBufferSize, 0);
     }
     void Operator();
 };
@@ -58,7 +58,7 @@ public:
         Serializer pack;
         packetData->SerializeHead(pack);
         packetData->Serialize(pack);
-        MakeNetworkPacket((DWORD)packetData->type, pack.GetBuffer(), pack.GetDataSize(), _sendBuffer, _sendBufferSize);
+        MakeNetworkPacket(pack.GetBuffer(), pack.GetDataSize(), _sendBuffer, _sendBufferSize, 0);
     }
     SendPacketToUser(INT64 token, char* sendBuffer, DWORD sendBufferSize)
         : CommandUnitBase(eCommandUnitPriority::Normal)

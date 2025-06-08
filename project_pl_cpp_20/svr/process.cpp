@@ -94,8 +94,8 @@ unsigned int App::ProcessThread(stop_token token)
         }
 
         PacketHead* pHead = (PacketHead*)pPacket->_pBuffer;
-        PacketTail* pTail = (PacketTail*)(pPacket->_pBuffer + pHead->dwLength - sizeof(PacketTail));
-        if (PACKET_CHECK_TAIL_KEY != pTail->dwCheckTail) {
+        PacketTail* pTail = (PacketTail*)(pPacket->_pBuffer + pHead->ui32Length - sizeof(PacketTail));
+        if (PACKET_CHECK_TAIL_KEY != pTail->ui32CheckTail) {
             LogError("Invliad packet");
             net.Disconnect(pConnector);
         }
@@ -111,20 +111,29 @@ unsigned int App::ProcessThread(stop_token token)
             //CPerformanceCheck(L"ProcessThread(): UserSession::MessageProcess()");
             pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
         } else {
-            PacketHead* pHeader = (PacketHead*)pPacket->_pBuffer;
-            if ((PacketTypeC2S)pHeader->dwProtocol == PacketTypeC2S::auth) {
-                //SafeLock lock(userSessionMgr._Lock);
+            //PacketHead* pHeader = (PacketHead*)pPacket->_pBuffer;
+            //if ((PacketTypeC2S)pHeader->ui32ProtocolFromTo == PacketTypeC2S::auth) {
+            //    //SafeLock lock(userSessionMgr._Lock);
 
-                if (pUserSession = userSessionMgr.GetFreeObject()) {
-                    pConnector->SetParam((void*)pUserSession);
-                    pUserSession->SetConnector(pConnector);
+            //    if (pUserSession = userSessionMgr.GetFreeObject()) {
+            //        pConnector->SetParam((void*)pUserSession);
+            //        pUserSession->SetConnector(pConnector);
 
-                    pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
-                } else {
-                    LogError("UserSessionMgr::GetFreeUserSession() fail");
-                }
+            //        pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
+            //    } else {
+            //        LogError("UserSessionMgr::GetFreeUserSession() fail");
+            //    }
+            //} else {
+            //    LogError("Invliad packet");
+            //    net.Disconnect(pConnector);
+            //}
+            if (pUserSession = userSessionMgr.GetFreeObject()) {
+                pConnector->SetParam((void*)pUserSession);
+                pUserSession->SetConnector(pConnector);
+
+                pUserSession->MessageProcess(pPacket->_pBuffer, pPacket->_nDataSize);
             } else {
-                LogError("Invliad packet");
+                LogError("UserSessionMgr::GetFreeUserSession() fail");
                 net.Disconnect(pConnector);
             }
         }

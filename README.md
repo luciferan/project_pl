@@ -22,9 +22,14 @@ history
 - rapidjson이 utf-8 인코딩만 읽을수 있는 문제가 있어서 다른거로 바꿔야할까싶음
 - 동기화서버는 rpc로 작성
 
-# todo - c#
+# todo - cs
 - 공용부분을 분리
 
+
+#20250608 - cpp
+- project_pl_cs_9와 같이 쓰기 위해 변경
+- packet에 사용하는 type을 정의타입으로 변경 (INT16, INT32...)
+- header {check, length} - body {packetType, data} - tail {check, seq, time}
 
 #20250601 - cs
 - PacketHandler를 TaskScheduler로 변경

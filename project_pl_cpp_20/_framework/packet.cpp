@@ -5,18 +5,19 @@
 #include "./_common.h"
 
 //
-eResultCode MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDataSize, char* pSendBuffer, DWORD& dwSendBufferSize)
+eResultCode MakeNetworkPacket(char* pSendData, DWORD dwSendDataSize, char* pSendBuffer, DWORD& dwSendBufferSize, UINT32 packetSeq)
 {
     PacketHead head;
     PacketTail tail;
 
-    head.dwCheckHead = PACKET_CHECK_HEAD_KEY;
-    head.dwLength = sizeof(PacketHead) + dwSendDataSize + sizeof(PacketTail);
-    head.dwProtocol = dwProtocol;
+    head.ui32CheckHead = PACKET_CHECK_HEAD_KEY;
+    head.ui32Length = sizeof(PacketHead) + dwSendDataSize + sizeof(PacketTail);
 
-    tail.dwCheckTail = PACKET_CHECK_TAIL_KEY;
+    tail.ui32CheckTail = PACKET_CHECK_TAIL_KEY;
+    tail.ui32PacketSeq = packetSeq;
+    tail.ui32PacketTime = _time32(NULL);
 
-    if (head.dwLength > dwSendBufferSize) {
+    if (head.ui32Length > dwSendBufferSize) {
         return eResultCode::fail;
     }
 
@@ -25,7 +26,7 @@ eResultCode MakeNetworkPacket(DWORD dwProtocol, char* pSendData, DWORD dwSendDat
     memcpy(pSendBuffer + nPos, (char*)pSendData, dwSendDataSize); nPos += dwSendDataSize;
     memcpy(pSendBuffer + nPos, (char*)&tail, sizeof(tail)); nPos += sizeof(tail);
 
-    dwSendBufferSize = head.dwLength;
+    dwSendBufferSize = head.ui32Length;
 
     //
     return eResultCode::succ;
@@ -42,14 +43,14 @@ eResultCode ParseNetworkData(CircleBuffer IN& Buffer, DWORD OUT& dwPacketLength)
     PacketHead Head;
     Buffer.Read((char*)&Head, sizeof(PacketHead));
 
-    if (PACKET_CHECK_HEAD_KEY != Head.dwCheckHead) {
+    if (PACKET_CHECK_HEAD_KEY != Head.ui32CheckHead) {
         return eResultCode::invalid_packet;
     }
 
-    if (Head.dwLength > dwDataSize) {
+    if (Head.ui32Length > dwDataSize) {
         return eResultCode::pending;
     }
 
-    dwPacketLength = Head.dwLength;
+    dwPacketLength = Head.ui32Length;
     return eResultCode::succ;
 }
