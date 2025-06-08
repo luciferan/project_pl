@@ -2,15 +2,16 @@
 {
     internal class MainApp
     {
-        static NetworkService network = new();
+        static NetworkService Network = new();
+        static DbConnector mysqlConnector = new();
 
         static void Main(string[] args) {
-            Console.Write("MainApp Start");
+            Console.WriteLine("MainApp Start");
 
-            network.Start();
-            while (true) {
+            //mysqlConnector.QueryTest();
+            Network.Start();
 
-            }
+            while (true) { }
         }
     }
 }

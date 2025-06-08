@@ -25,6 +25,15 @@ history
 # todo - cs
 - 공용부분을 분리
 
+#20250608 - cs
+- 작업내용 중간 커밋
+- project_pl_cpp_20과 같이 쓰기 위해 변경중
+- packet head+body+tail 구조로 변경
+- pl_cpp서버에 에코 테스트
+- pl_cpp 패킷 추가
+- pl_cpp에서 사용한 방식의 packetSerializer 추가
+- PacketHandlerQueue를 LinkedList에서 Queue로 변경
+- mysql 연결 테스트
 
 #20250608 - cpp
 - project_pl_cs_9와 같이 쓰기 위해 변경

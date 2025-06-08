@@ -22,7 +22,7 @@ namespace Server
 
         PacketHandler _packetHandler = PacketHandler.Instance;
 
-        public async Task<bool> DataParsing(PlayerSession player, byte[] buffer, int offset, int transferred) {
+        public bool DataParsing(PlayerSession player, byte[] buffer, int offset, int transferred) {
             if (maxBufferSize < currPos + transferred) {
                 return false;
             }
@@ -34,12 +34,12 @@ namespace Server
                 return true;
             }
 
-            PacketHeader packetHeader = new(packetBuffer);
-            if (packetSize < packetHeader.PacketSize + PacketHeaderSize) {
+            PacketHead packetHeader = new(packetBuffer);
+            if (packetSize < packetHeader.PacketLength) {
                 return true;
             }
 
-            Packet packet = new(packetBuffer);
+            Packet packet = new(packetBuffer, packetHeader.PacketLength);
             readPos = packet.GetSize();
             BufferTrim();
 

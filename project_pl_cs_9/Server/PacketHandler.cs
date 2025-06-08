@@ -1,5 +1,6 @@
 ﻿using Server;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -18,11 +19,12 @@ namespace Server
         public static PacketHandler Instance => _instance.Value;
 
         private readonly int _maxParallelism = 4;
-        private readonly LinkedList<Task> _tasks = new();
+        //private readonly LinkedList<Task> _tasks = new();
+        private readonly Queue<Task> _tasks = new();
         private int _runningTasks = 0;
         private readonly object _lock = new();
 
-        private readonly Dictionary<Int32, Func<PlayerSession, Packet, Task<bool>>> functionMap = new();
+        private readonly Dictionary<UInt32, Func<PlayerSession, Packet, Task<bool>>> functionMap = new();
 
         private PacketHandler(int maxParallelism = 4) {
             _maxParallelism = maxParallelism;
@@ -37,7 +39,8 @@ namespace Server
 
         protected override void QueueTask(Task packetTask) {
             lock (_lock) {
-                _tasks.AddLast(packetTask);
+                //_tasks.AddLast(packetTask);
+                _tasks.Enqueue(packetTask);
                 TryExecuteTasks();
             }
         }
@@ -52,17 +55,22 @@ namespace Server
         }
 
         private void TryExecuteTasks() {
-            while (_runningTasks < _maxParallelism && _tasks.First != null) {
+            //while (_runningTasks < _maxParallelism && _tasks.First != null) {
+            while (_runningTasks < _maxParallelism && _tasks.Count > 0) {
                 Task? task = null;
+                bool executeTask = false;
 
                 lock (_lock) {
-                    task = _tasks.First.Value;
-                    _tasks.RemoveFirst();
-                    _runningTasks++;
+                    //task = _tasks.First.Value;
+                    //_tasks.RemoveFirst();
+                    //_runningTasks++;
+                    executeTask = _tasks.TryDequeue(out task);
                 }
 
-                base.TryExecuteTask(task);
-                TaskCompleted();
+                if (executeTask && task != null) {
+                    base.TryExecuteTask(task);
+                    TaskCompleted();
+                }
             }
         }
 
@@ -81,17 +89,23 @@ namespace Server
             return false;
         }
 
-        public void RegisterPacketFunction(Int32 packetType, Func<PlayerSession, Packet, Task<bool>> func) {
+        public void RegisterPacketFunction(UInt32 packetType, Func<PlayerSession, Packet, Task<bool>> func) {
             if (!functionMap.ContainsKey(packetType)) {
                 functionMap.Add(packetType, func);
             }
         }
 
-        private static async Task<bool> CS_EchoAsync(PlayerSession player, Packet packet) {
-            string recvMsg = Encoding.UTF8.GetString(packet.GetPacketData());
+        private static async Task<bool> CS_Heartbeat(PlayerSession Player, Packet Pack) {
+            return await Task.FromResult(true);
+        }
+        private static async Task<bool> CS_EchoAsync(PlayerSession Player, Packet pack) {
+            //packet.Body;
+            PacketCS_Echo packet = new PacketCS_Echo(pack.Body);
+
+            string recvMsg = Encoding.UTF8.GetString(packet.EchoMsg);
             Console.WriteLine($"CS_EchoAsync: {recvMsg}");
 
-            player.Send(packet);
+            Player.Send(pack);
             return await Task.FromResult(true);
         }
     }

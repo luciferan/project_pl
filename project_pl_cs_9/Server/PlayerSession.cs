@@ -43,10 +43,10 @@ namespace Server
             }
         }
 
-        async void OnRecvCompleted(object? sender, SocketAsyncEventArgs args) {
+        void OnRecvCompleted(object? sender, SocketAsyncEventArgs args) {
             if (SocketError.Success == args.SocketError && 0 < args.BytesTransferred && null != args.Buffer) {
                 Console.WriteLine($"PlayerSession OnRecvCompleted. recvSize:{args.BytesTransferred}");
-                await _packetParser.DataParsing(this, args.Buffer, args.Offset, args.BytesTransferred);
+                _packetParser.DataParsing(this, args.Buffer, args.Offset, args.BytesTransferred);
             } else {
                 Console.WriteLine($"Error: {args.SocketError}, BytesTransferred: {args.BytesTransferred}");
                 Disconnect();
@@ -64,7 +64,7 @@ namespace Server
 
         public void Send(Packet sendPacket) {
             lock (_sendLock) {
-                _sendQueue.Enqueue(new ArraySegment<byte>(sendPacket.GetSerialize(), 0, sendPacket.GetSerialize().Length));
+                _sendQueue.Enqueue(new ArraySegment<byte>(sendPacket.Serialize(), 0, sendPacket.Serialize().Length));
             }
             DoSend();
         }

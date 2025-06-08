@@ -10,55 +10,74 @@ namespace Client
     {
         public class Packet
         {
-            public int PacketType { get; set; }
-            public int PacketSize { get; set; }
-            public byte[] PacketData { get; set; } = Array.Empty<byte>();
+            // head
+            public UInt32 CheckHead { get; set; } = 0x00000000;
+            public Int32 PacketLength { get; set; }
+
+            // body
+            public UInt32 PacketType { get; set; }
+            public Int32 EchoMsgLength { get; set; }
+            public byte[] EchoMsg { get; set; } = Array.Empty<byte>();
+
+            // tail
+            public UInt32 CheckTail { get; set; } = 0x10000000;
+            public UInt32 PacketTime { get; set; }
 
             public Packet() { }
-            public Packet(byte[] packetData) {
-                PacketData = new byte[packetData.Length];
-                Array.Copy(packetData, 0, PacketData, 0, packetData.Length);
-
+            public Packet(byte[] EchoMsg) {
                 PacketType = 2;
-                PacketSize = PacketData.Length;
+                this.EchoMsgLength = EchoMsg.Length;
+                this.EchoMsg = new byte[EchoMsg.Length];
+                Array.Copy(EchoMsg, 0, this.EchoMsg, 0, EchoMsg.Length);
+
+                PacketLength = (sizeof(Int64) + sizeof(Int32) + EchoMsgLength + (sizeof(Int32) * 5));
+                PacketTime = (UInt32)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             }
 
-            public byte[] GetSerialize() {
-                byte[] buffer = new byte[8 + PacketData.Length];
-                Array.Copy(BitConverter.GetBytes(PacketType), 0, buffer, 0, 4);
-                Array.Copy(BitConverter.GetBytes(PacketSize), 0, buffer, 4, 4);
-                Array.Copy(PacketData, 0, buffer, 8, PacketData.Length);
+            public byte[] Serialize() {
+                int offset = 0;
+                byte[] buffer = new byte[PacketLength];
+                Array.Copy(BitConverter.GetBytes(CheckHead), 0, buffer, offset, sizeof(UInt32)); offset += sizeof(UInt32);
+                Array.Copy(BitConverter.GetBytes(PacketLength), 0, buffer, offset, sizeof(Int32)); offset += sizeof(Int32);
+
+                Array.Copy(BitConverter.GetBytes(PacketType), 0, buffer, offset, sizeof(UInt32)); offset += sizeof(UInt32);
+                Array.Copy(BitConverter.GetBytes(EchoMsgLength), 0, buffer, offset, sizeof(Int32)); offset += sizeof(Int32);
+                Array.Copy(EchoMsg, 0, buffer, offset, EchoMsgLength); offset += EchoMsgLength;
+
+                Array.Copy(BitConverter.GetBytes(CheckTail), 0, buffer, offset, sizeof(UInt32)); offset += sizeof(UInt32);
+                Array.Copy(BitConverter.GetBytes(PacketTime), 0, buffer, offset, sizeof(UInt32)); offset += sizeof(UInt32);
 
                 return buffer;
             }
+            public void Serialize(byte[] Buffer) {
+                int offset = 0;
 
-            public int GetSize() {
-                return (sizeof(Int32) * 2) + PacketSize;
+                CheckHead = BitConverter.ToUInt32(Buffer, offset); offset += sizeof(UInt32);
+                PacketLength = BitConverter.ToInt32(Buffer, offset); offset += sizeof(Int32);
+
+                PacketType = BitConverter.ToUInt32(Buffer, offset); offset += sizeof(UInt32);
+                EchoMsgLength = BitConverter.ToInt32(Buffer, offset); offset += sizeof(Int32);
+                EchoMsg = new byte[EchoMsgLength];
+                Array.Copy(Buffer, offset, EchoMsg, 0, EchoMsgLength);
+
+                CheckTail = BitConverter.ToUInt32(Buffer, offset); offset += sizeof(UInt32);
+                PacketTime = BitConverter.ToUInt32(Buffer, offset); offset += sizeof(UInt32);
             }
 
-            public void GetSerialize(byte[] packetBuffer) {
-                PacketType = BitConverter.ToInt32(packetBuffer, 0);
-                PacketSize = BitConverter.ToInt32(packetBuffer, 4);
-                Array.Copy(PacketData, 0, packetBuffer, 8, PacketSize);
-            }
-
-            public void Parsing(byte[] packetBuffer) {
-                PacketType = BitConverter.ToInt32(packetBuffer, 0);
-                PacketSize = BitConverter.ToInt32(packetBuffer, 4);
-                PacketData = new byte[PacketSize];
-                Array.Copy(packetBuffer, 8, PacketData, 0, PacketSize);
+            public Int32 GetSize() {
+                return PacketLength;
             }
         }
 
-        static Packet DataParsing(byte[] buffer) {
+        static Packet DataParsing(byte[] buffer, int recvByteSize) {
             Packet packet = new();
-            packet.Parsing(buffer);
+            packet.Serialize(buffer);
             return packet;
         }
 
         static void Main(string[] args) {
             string serverIP = "127.0.0.1";
-            const int serverPort = 16001;
+            const int serverPort = 16101;
 
             IPEndPoint remoteAddress = new IPEndPoint(IPAddress.Parse(serverIP), serverPort);
 
@@ -81,16 +100,16 @@ namespace Client
                         string echoMsg = $"Hello. This message seq {idx}";
                         Packet packet = new(Encoding.UTF8.GetBytes(echoMsg));
 
-                        stream.Write(packet.GetSerialize(), 0, packet.GetSize());
+                        stream.Write(packet.Serialize(), 0, packet.GetSize());
                         Console.WriteLine($"Data sent to server: {echoMsg}");
                     }
 
                     {
                         int bytesRead = stream.Read(recvBuffer, 0, recvBuffer.Length);
-                        Packet packet = DataParsing(recvBuffer);
+                        Packet packet = DataParsing(recvBuffer, bytesRead);
                         Array.Copy(recvBuffer, packet.GetSize(), recvBuffer, 0, recvBuffer.Length - packet.GetSize());
 
-                        string message = Encoding.UTF8.GetString(packet.PacketData);
+                        string message = Encoding.UTF8.GetString(packet.EchoMsg);
                         Console.WriteLine($"Received from server: {message}");
                     }
 

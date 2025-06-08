@@ -11,7 +11,7 @@ namespace Server
     internal class NetworkService
     {
         Socket _listenSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        IPEndPoint _listenPoint = new IPEndPoint(IPAddress.Any, 16001);
+        IPEndPoint _listenPoint = new IPEndPoint(IPAddress.Any, 16101);
         int _listenWaitCount = 10;
 
         Stack<PlayerSession> _playerSession = new();
