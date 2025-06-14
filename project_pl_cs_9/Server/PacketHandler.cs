@@ -9,79 +9,32 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Sources;
+using PL_Network;
+using Org.BouncyCastle.Bcpg;
 
 
 namespace Server
 {
-    public class PacketHandler : TaskScheduler
+    public class PacketHandler : IPacketHandler
     {
         private static readonly Lazy<PacketHandler> _instance = new(() => new());
         public static PacketHandler Instance => _instance.Value;
 
-        private readonly int _maxParallelism = 4;
-        //private readonly LinkedList<Task> _tasks = new();
-        private readonly Queue<Task> _tasks = new();
-        private int _runningTasks = 0;
-        private readonly object _lock = new();
+        private readonly Dictionary<UInt32, Func<PlayerSession, PacketBody, Task<bool>>> functionMap = new();
 
-        private readonly Dictionary<UInt32, Func<PlayerSession, Packet, Task<bool>>> functionMap = new();
-
-        private PacketHandler(int maxParallelism = 4) {
-            _maxParallelism = maxParallelism;
-            RegisterPacketFunction(ProtocolCS.ECHO, CS_EchoAsync);
+        private PacketHandler(int maxParallelism = 4) : base(maxParallelism) {
+            RegistPacketFunction();
         }
 
-        protected override IEnumerable<Task> GetScheduledTasks() {
-            lock (_lock) {
-                return _tasks.ToArray();
-            }
-        }
-
-        protected override void QueueTask(Task packetTask) {
-            lock (_lock) {
-                //_tasks.AddLast(packetTask);
-                _tasks.Enqueue(packetTask);
-                TryExecuteTasks();
-            }
-        }
-
-        protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued) => false;
-
-        public void Enqueue(PlayerSession player, Packet packet) {
+        public void Enqueue(PlayerSession player, PacketBody packet) {
             Task task = Task.Factory.StartNew(async () => await PacketProcess(player, packet),
                 CancellationToken.None, TaskCreationOptions.None,
                 this
                 ).Unwrap();
         }
 
-        private void TryExecuteTasks() {
-            //while (_runningTasks < _maxParallelism && _tasks.First != null) {
-            while (_runningTasks < _maxParallelism && _tasks.Count > 0) {
-                Task? task = null;
-                bool executeTask = false;
-
-                lock (_lock) {
-                    //task = _tasks.First.Value;
-                    //_tasks.RemoveFirst();
-                    //_runningTasks++;
-                    executeTask = _tasks.TryDequeue(out task);
-                }
-
-                if (executeTask && task != null) {
-                    base.TryExecuteTask(task);
-                    TaskCompleted();
-                }
-            }
-        }
-
-        private void TaskCompleted() {
-            lock (_lock) {
-                _runningTasks--;
-                TryExecuteTasks();
-            }
-        }
-        public async Task<bool> PacketProcess(PlayerSession player, Packet packet) {
-            if (functionMap.TryGetValue(packet.GetPacketType(), out var packetFunction)) {
+        async Task<bool> PacketProcess(PlayerSession player, PacketBody packet) {
+            if (functionMap.TryGetValue(packet.PacketType, out var packetFunction)) {
                 if (packetFunction != null) {
                     return await packetFunction.Invoke(player, packet);
                 }
@@ -89,23 +42,61 @@ namespace Server
             return false;
         }
 
-        public void RegisterPacketFunction(UInt32 packetType, Func<PlayerSession, Packet, Task<bool>> func) {
-            if (!functionMap.ContainsKey(packetType)) {
-                functionMap.Add(packetType, func);
+        void Register(PacketTypeCS packetType, Func<PlayerSession, PacketBody, Task<bool>> func) {
+            if (!functionMap.ContainsKey((UInt32)packetType)) {
+                functionMap.Add((UInt32)packetType, func);
             }
         }
 
-        private static async Task<bool> CS_Heartbeat(PlayerSession Player, Packet Pack) {
+        void RegistPacketFunction() {
+            Register(PacketTypeCS.auth, CS_AuthAsync);
+            Register(PacketTypeCS.enter, CS_EnterAsync);
+            Register(PacketTypeCS.leave, CS_LeaveAsync);
+            Register(PacketTypeCS.move, CS_MoveAsync);
+            Register(PacketTypeCS.interaction, CS_InteractionAsync);
+            Register(PacketTypeCS.chat, CS_ChatAsync);
+            Register(PacketTypeCS.heartbeat, CS_HeartbeatAsync);
+            Register(PacketTypeCS.echo, CS_EchoAsync);
+        }
+
+        private static async Task<bool> CS_AuthAsync(PlayerSession player, PacketBody pack) {
+            PacketCS_Auth packet = new PacketCS_Auth(pack.PacketData);
             return await Task.FromResult(true);
         }
-        private static async Task<bool> CS_EchoAsync(PlayerSession Player, Packet pack) {
-            //packet.Body;
-            PacketCS_Echo packet = new PacketCS_Echo(pack.Body);
+        private static async Task<bool> CS_EnterAsync(PlayerSession Player, PacketBody pack) {
+            PacketCS_Enter packet = new PacketCS_Enter(pack.PacketData);
+            return await Task.FromResult(true);
+        }
+        private static async Task<bool> CS_LeaveAsync(PlayerSession Player, PacketBody pack) {
+            PacketCS_Leave packet = new PacketCS_Leave(pack.PacketData);
+            return await Task.FromResult(true);
+        }
+        private static async Task<bool> CS_MoveAsync(PlayerSession Player, PacketBody pack) {
+            PacketCS_Move packet = new PacketCS_Move(pack.PacketData);
+            return await Task.FromResult(true);
+        }
+        private static async Task<bool> CS_InteractionAsync(PlayerSession Player, PacketBody pack) {
+            PacketCS_Interaction packet = new PacketCS_Interaction(pack.PacketData);
+            return await Task.FromResult(true);
+        }
+        private static async Task<bool> CS_ChatAsync(PlayerSession Player, PacketBody pack) {
+            PacketCS_Chat packet = new PacketCS_Chat(pack.PacketData);
+            return await Task.FromResult(true);
+        }
+        private static async Task<bool> CS_HeartbeatAsync(PlayerSession Player, PacketBody pack) {
+            PacketCS_Heaetbeat packet = new PacketCS_Heaetbeat(pack.PacketData);
+            return await Task.FromResult(true);
+        }
+        private static async Task<bool> CS_EchoAsync(PlayerSession Player, PacketBody pack) {
+            PacketCS_Echo packet = new PacketCS_Echo(pack.PacketData);
 
-            string recvMsg = Encoding.UTF8.GetString(packet.EchoMsg);
+            string recvMsg = packet.EchoMsg;
             Console.WriteLine($"CS_EchoAsync: {recvMsg}");
 
-            Player.Send(pack);
+            PacketSC_Echo sendPacket = new();
+            sendPacket.SetData(0, recvMsg);
+            Player.Send(sendPacket);
+
             return await Task.FromResult(true);
         }
     }

@@ -4,52 +4,50 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
+using PL_Network;
 
 namespace Server
 {
     internal class PacketParser
     {
-        const int PacketHeaderSize = 8;
+        const int maxBufferSize = 1024 * 10;
 
-        int maxBufferSize = 1024 * 10;
-        byte[] packetBuffer = new byte[1024 * 10];
-        int packetSize = 0;
+        byte[] recvBuffer = new byte[maxBufferSize];
+        int recvLength = 0;
 
         int currPos = 0;
         int readPos = 0;
 
-        public delegate void CompletedPacketRecvCallback(Packet packet);
-
-        PacketHandler _packetHandler = PacketHandler.Instance;
+        PacketHead head = new();
 
         public bool DataParsing(PlayerSession player, byte[] buffer, int offset, int transferred) {
             if (maxBufferSize < currPos + transferred) {
                 return false;
             }
 
-            Array.Copy(buffer, offset, packetBuffer, currPos, transferred);
+            Array.Copy(buffer, offset, recvBuffer, currPos, transferred);
             currPos += transferred;
-            packetSize += transferred;
-            if (packetSize < PacketHeaderSize) {
+            recvLength += transferred;
+            if (recvLength < PacketHead.Length) {
                 return true;
             }
 
-            PacketHead packetHeader = new(packetBuffer);
-            if (packetSize < packetHeader.PacketLength) {
+            head.Serialize(new Serializer(recvBuffer, recvLength));
+            if (recvLength < head.PacketLength) {
                 return true;
             }
 
-            Packet packet = new(packetBuffer, packetHeader.PacketLength);
-            readPos = packet.GetSize();
+            Packet packet = Serializer.PacketDeserializer(recvBuffer, head.PacketLength);
+            readPos = head.PacketLength;
             BufferTrim();
 
-            PacketHandler.Instance.Enqueue(player, packet);
+            PacketHandler.Instance.Enqueue(player, packet.Body);
             return true;
         }
 
         public void BufferTrim() {
-            Array.Copy(packetBuffer, readPos, packetBuffer, 0, packetBuffer.Length - readPos);
-            packetSize -= readPos;
+            Array.Copy(recvBuffer, readPos, recvBuffer, 0, recvBuffer.Length - readPos);
+            recvLength -= readPos;
             currPos -= readPos;
             readPos = 0;
         }

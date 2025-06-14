@@ -1,106 +1,100 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Network
+namespace PL_Network
 {
-    public class PacketBase
+    public abstract class PacketBase
     {
-        public UInt32 PacketType = (UInt32)PacketTypeCS.Invalid;
+        UInt32 packetType = 0;
+        public UInt32 PacketType { get { return packetType; } set { packetType = value; } }
+
         public PacketBase(UInt32 packetType) {
-            PacketType = packetType;
+            this.packetType = packetType;
         }
+        public void SerializeType(Serializer ser) {
+            ser.Value(ref packetType);
+        }
+        public void SerializeBody(Serializer ser) {
+            Serialize(ser);
+        }
+        public abstract void Serialize(Serializer ser);
+        public int GetTypeSize() { return sizeof(UInt32); }
+        public abstract int GetSize();
     }
 
-    public class Serializer
+    public class PacketHead
     {
-        static readonly int MaxPacketBufferSize = 1024 * 10;
+        UInt32 checkHead = 0x00000000;
+        Int32 packetLength = 0;
+        public UInt32 CheckHead { get { return checkHead; } set { checkHead = value; } }
+        public Int32 PacketLength { get { return packetLength; } set { packetLength = value; } }
 
-        bool Write = true;
-        int offset = 0;
-        public byte[] Buffer = new byte[MaxPacketBufferSize];
+        public void Serialize(Serializer ser) {
+            ser.Value(ref checkHead);
+            ser.Value(ref packetLength);
+        }
+        public int GetSize() {
+            return sizeof(UInt32) + sizeof(Int32);
+        }
+        public static int Length { get { return sizeof(UInt32) + sizeof(Int32); } }
+    }
 
-        public void Value(ref Int16 value) {
-            if (Write) {
-                Array.Copy(BitConverter.GetBytes(value), 0, Buffer, offset, sizeof(Int16));
-            } else {
-                value = BitConverter.ToInt16(Buffer, offset);
-            }
-            offset += sizeof(Int16);
+    public class PacketBody
+    {
+        UInt32 packetType = 0;
+        byte[] packetData = Array.Empty<byte>();
+        public UInt32 PacketType { get { return packetType; } set { packetType = value; } }
+        public byte[] PacketData { get { return packetData; } set { PacketData = value; } }
+
+        public PacketBody() { }
+        public void Serialize(Serializer ser, int bodyLength) {
+            packetData = new byte[bodyLength - sizeof(UInt32)];
+            ser.Value(ref packetType);
+            ser.Value(ref packetData, packetData.Length);
         }
-        public void Value(ref UInt16 value) {
-            if (Write) {
-                Array.Copy(BitConverter.GetBytes(value), 0, Buffer, offset, sizeof(UInt16));
-            } else {
-                value = BitConverter.ToUInt16(Buffer, offset);
-            }
-            offset += sizeof(UInt16);
-        }
-        public void Value(ref Int32 value) {
-            if (Write) {
-                Array.Copy(BitConverter.GetBytes(value), 0, Buffer, offset, sizeof(Int32));
-            } else {
-                value = BitConverter.ToInt32(Buffer, offset);
-            }
-            offset += sizeof(Int32);
-        }
-        public void Value(ref UInt32 value) {
-            if (Write) {
-                Array.Copy(BitConverter.GetBytes(value), 0, Buffer, offset, sizeof(UInt32));
-            } else {
-                value = BitConverter.ToUInt32(Buffer, offset);
-            }
-            offset += sizeof(UInt32);
-        }
-        public void Value(ref Int64 value) {
-            if (Write) {
-                Array.Copy(BitConverter.GetBytes(value), 0, Buffer, offset, sizeof(Int64));
-            } else {
-                value = BitConverter.ToInt64(Buffer, offset);
-            }
-            offset += sizeof(Int64);
-        }
-        public void Value(ref UInt64 value) {
-            if (Write) {
-                Array.Copy(BitConverter.GetBytes(value), 0, Buffer, offset, sizeof(UInt64));
-            } else {
-                value = BitConverter.ToUInt64(Buffer, offset);
-            }
-            offset += sizeof(UInt64);
-        }
-        public void Value(ref Single value) {
-            if (Write) {
-                Array.Copy(BitConverter.GetBytes(value), 0, Buffer, offset, sizeof(Single));
-            } else {
-                value = BitConverter.ToSingle(Buffer, offset);
-            }
-            offset += sizeof(Single);
-        }
-        public void Value(ref Double value) {
-            if (Write) {
-                Array.Copy(BitConverter.GetBytes(value), 0, Buffer, offset, sizeof(Double));
-            } else {
-                value = BitConverter.ToDouble(Buffer, offset);
-            }
-            offset += sizeof(Double);
-        }
-        public void Value(ref char[] Data, int length) {
-            if (Write) {
-                Array.Copy(Data, 0, Buffer, offset, length);
-            } else {
-                Array.Copy(Buffer, offset, Data, 0, length);
-            }
-            offset += length;
-        }
-        public void Value(ref string Data, int length) {
-            if (Write) {
-                Array.Copy(Encoding.UTF8.GetBytes(Data), 0, Buffer, offset, length);
-            } else {
-                Data = Encoding.UTF8.GetString(Buffer, offset, length);
-            }
-            offset += length;
+        public int GetSize() {
+            return sizeof(UInt32) + packetData.Length;
         }
     }
+
+    public class PacketTail
+    {
+        UInt32 checkTail = 0x10000000;
+        UInt32 packetSeq = 0;
+        UInt32 packetTime = 0;
+        public UInt32 CheckTail { get { return checkTail; } set { checkTail = value; } }
+        public UInt32 PacketSeq { get { return packetSeq; } set { packetSeq = value; } }
+        public UInt32 PacketTime { get { return packetTime; } set { packetTime = value; } }
+
+        public void Serialize(Serializer ser) {
+            ser.Value(ref checkTail);
+            ser.Value(ref packetSeq);
+            ser.Value(ref packetTime);
+        }
+        public int GetSize() {
+            return sizeof(UInt32) * 3;
+        }
+        public static int Length { get { return sizeof(UInt32) * 3; } }
+    }
+
+    public class Packet
+    {
+        public PacketHead Head { get; } = new();
+        public PacketBody Body { get; } = new();
+        public PacketTail Tail { get; } = new();
+
+        public Packet(byte[] Buffer, int length) : this(new Serializer(Buffer, length)) {
+        }
+        public Packet(Serializer ser) {
+            Head.Serialize(ser);
+            Body.Serialize(ser, Head.PacketLength - Head.GetSize() - Tail.GetSize());
+            Tail.Serialize(ser);
+        }
+    }
+
 }

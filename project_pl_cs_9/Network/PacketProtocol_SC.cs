@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Network
+namespace PL_Network
 {
     public enum PacketTypeSC
     {
@@ -28,9 +28,12 @@ namespace Network
         public Int64 Token { get { return token; } set { token = value; } }
 
         public PacketSC_AuthResult() : base((UInt32)PacketTypeSC.auth_result) { }
-        public void Serialize(Serializer ser) {
+        public override void Serialize(Serializer ser) {
             ser.Value(ref id);
             ser.Value(ref token);
+        }
+        public override int GetSize() {
+            return GetTypeSize() + sizeof(Int32) + sizeof(Int64);
         }
     }
 
@@ -43,10 +46,13 @@ namespace Network
         public Int32 Y { get { return y; } set { y = value; } }
 
         public PacketSC_Enter() : base((UInt32)PacketTypeSC.enter) { }
-        public void Serialize(Serializer ser) {
+        public override void Serialize(Serializer ser) {
             ser.Value(ref token);
             ser.Value(ref x);
             ser.Value(ref y);
+        }
+        public override int GetSize() {
+            return GetTypeSize() + sizeof(Int64) + sizeof(Int32) * 2;
         }
     }
 
@@ -62,8 +68,11 @@ namespace Network
         //public List<CharacterDbData> CharacterList { get; } = new List<CharacterDbData>();
 
         public PacketSC_EnterCharacter() : base((uint)PacketTypeSC.enter_player) { }
-        public void Serialize(Serializer ser) {
+        public override void Serialize(Serializer ser) {
             ser.Value(ref count);
+        }
+        public override int GetSize() {
+            return GetTypeSize() + sizeof(Int32);
         }
     }
 
@@ -73,8 +82,11 @@ namespace Network
         public Int64 Token { get { return token; } set { token = value; } }
 
         public PacketSC_Leave() : base((UInt32)PacketTypeSC.leave) { }
-        public void Serialize(Serializer ser) {
+        public override void Serialize(Serializer ser) {
             ser.Value(ref token);
+        }
+        public override int GetSize() {
+            return GetTypeSize() + sizeof(Int64);
         }
     }
 
@@ -87,10 +99,13 @@ namespace Network
         public Int32 Y { get { return y; } set { y = value; } }
 
         public PacketSC_Move() : base((UInt32)PacketTypeSC.move) { }
-        public void Serialize(Serializer ser) {
+        public override void Serialize(Serializer ser) {
             ser.Value(ref token);
             ser.Value(ref x);
             ser.Value(ref y);
+        }
+        public override int GetSize() {
+            return GetTypeSize() + sizeof(Int64) + sizeof(Int32) * 2;
         }
     }
 
@@ -104,17 +119,23 @@ namespace Network
         public Int32 InteractionType { get { return interactionType; } set { interactionType = value; } }
 
         public PacketSC_Interaction() : base((UInt32)PacketTypeSC.interaction) { }
-        public void Serialize(Serializer ser) {
+        public override void Serialize(Serializer ser) {
             ser.Value(ref token);
             ser.Value(ref targetToken);
             ser.Value(ref interactionType);
+        }
+        public override int GetSize() {
+            return GetTypeSize() + sizeof(Int64) * 2 + sizeof(Int32);
         }
     }
 
     public class PacketSC_HeartBeat : PacketBase
     {
         public PacketSC_HeartBeat() : base((UInt32)PacketTypeSC.heartbeat) { }
-        public void Serialize(Serializer ser) {
+        public override void Serialize(Serializer ser) {
+        }
+        public override int GetSize() {
+            return GetTypeSize();
         }
     }
 
@@ -128,10 +149,18 @@ namespace Network
         public string EchoMsg { get { return echoMsg; } set { echoMsg = value; } }
 
         public PacketSC_Echo() : base((UInt32)PacketTypeSC.echo) { }
-        public void Serialize(Serializer ser) {
+        public void SetData(Int64 token, string echoMsg) {
+            this.token = token;
+            this.echoMsg = echoMsg;
+            this.echoMsgLength = echoMsg.Length;
+        }
+        public override void Serialize(Serializer ser) {
             ser.Value(ref token);
             ser.Value(ref echoMsgLength);
             ser.Value(ref echoMsg, echoMsgLength);
+        }
+        public override int GetSize() {
+            return GetTypeSize() + sizeof(Int64) + sizeof(Int32) + echoMsgLength;
         }
     }
 }

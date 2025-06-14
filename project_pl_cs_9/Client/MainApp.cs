@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Runtime.CompilerServices;
 using System.IO;
+using PL_Network;
 
 namespace Client
 {
@@ -75,6 +76,21 @@ namespace Client
             return packet;
         }
 
+        //static Serializer MakeNetworkPacket(PacketBase body) {
+        //    PacketHead head = new PacketHead();
+        //    PacketTail tail = new PacketTail();
+        //    head.PacketLength = head.GetSize() + body.GetSize() + tail.GetSize();
+
+        //    Serializer ser = new Serializer(head.PacketLength);
+        //    head.Serialize(ser);
+        //    body.SerializeType(ser);
+        //    body.SerializeBody(ser);
+        //    tail.Serialize(ser);
+
+        //    return ser;
+        //}
+
+
         static void Main(string[] args) {
             string serverIP = "127.0.0.1";
             const int serverPort = 16101;
@@ -98,22 +114,40 @@ namespace Client
                     ++idx;
                     {
                         string echoMsg = $"Hello. This message seq {idx}";
-                        Packet packet = new(Encoding.UTF8.GetBytes(echoMsg));
+                        //Packet packet = new(Encoding.UTF8.GetBytes(echoMsg));
 
-                        stream.Write(packet.Serialize(), 0, packet.GetSize());
+                        //stream.Write(packet.Serialize(), 0, packet.GetSize());
+                        //Console.WriteLine($"Data sent to server: {echoMsg}");
+                        PacketCS_Echo sendPacket = new();
+                        sendPacket.EchoMsg = echoMsg;
+                        //Serializer ser = MakeNetworkPacket(sendPacket);
+                        Serializer ser = Serializer.PacketSerializer(sendPacket);
+                        stream.Write(ser.Buffer, 0, ser.GetSize());
                         Console.WriteLine($"Data sent to server: {echoMsg}");
                     }
 
                     {
                         int bytesRead = stream.Read(recvBuffer, 0, recvBuffer.Length);
-                        Packet packet = DataParsing(recvBuffer, bytesRead);
-                        Array.Copy(recvBuffer, packet.GetSize(), recvBuffer, 0, recvBuffer.Length - packet.GetSize());
+                        //Packet packet = DataParsing(recvBuffer, bytesRead);
+                        //Array.Copy(recvBuffer, packet.GetSize(), recvBuffer, 0, recvBuffer.Length - packet.GetSize());
 
-                        string message = Encoding.UTF8.GetString(packet.EchoMsg);
+                        //string message = Encoding.UTF8.GetString(packet.EchoMsg);
+                        //Console.WriteLine($"Received from server: {message}");
+                        Serializer ser = new Serializer(recvBuffer, bytesRead);
+                        PacketHead head = new PacketHead();
+                        head.Serialize(ser);
+                        PacketSC_Echo recvPacket = new();
+                        recvPacket.Serialize(ser);
+                        PacketTail tail = new PacketTail();
+                        tail.Serialize(ser);
+
+                        string message = recvPacket.EchoMsg;
                         Console.WriteLine($"Received from server: {message}");
+
                     }
 
-                    Thread.Sleep(random.Next(1000, 2000));
+                    //Thread.Sleep(random.Next(1000, 2000));
+                    Thread.Sleep(500);
                 }
 
                 Console.WriteLine("Client close");

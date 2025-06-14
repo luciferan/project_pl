@@ -24,6 +24,12 @@ history
 
 # todo - cs
 - 공용부분을 분리
+- 내가 추가하지 않은 using이 자꾸 늘어나는데 vs에서 자동 추가되는건지 코파일럿이 추가하는건지 모르겠다
+
+
+#20250614 - cs
+- PacketHandler의 인터페이스 IPacketHandler를 추가
+- packet, Serializer, Handler를 PL_Network로 이동
 
 #20250608 - cs
 - 작업내용 중간 커밋

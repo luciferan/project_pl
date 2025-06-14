@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
 using System.ComponentModel.Design;
+using PL_Network;
 
 namespace Server
 {
@@ -57,14 +58,15 @@ namespace Server
 
         public void Send(byte[] sendBuffer) {
             lock (_sendLock) {
-                _sendQueue.Enqueue(new ArraySegment<byte>(sendBuffer, 0, sendBuffer.Length));
+                _sendQueue.Enqueue(sendBuffer);
             }
             DoSend();
         }
 
-        public void Send(Packet sendPacket) {
+        public void Send(PacketBase sendPacket) {
             lock (_sendLock) {
-                _sendQueue.Enqueue(new ArraySegment<byte>(sendPacket.Serialize(), 0, sendPacket.Serialize().Length));
+                Serializer ser = Serializer.PacketSerializer(sendPacket);
+                _sendQueue.Enqueue(ser.Buffer);
             }
             DoSend();
         }
@@ -134,18 +136,5 @@ namespace Server
                 }
             }
         }
-
-        //void PacketHandler(Packet packet) {
-        //    switch (packet.GetPacketType()) {
-        //        case ProtocolCS.HEARTBEAT:
-        //        case ProtocolCS.ECHO:
-        //            string recvMsg = Encoding.UTF8.GetString(packet.GetPacketData());
-        //            Console.WriteLine($"RecvPacket {packet.GetPacketType()}: {recvMsg}");
-        //            Send(packet);
-        //            break;
-        //        default:
-        //            break;
-        //    }
-        //}
     }
 }
