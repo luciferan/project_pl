@@ -21,11 +21,16 @@ history
 - c#으로 포팅
 - rapidjson이 utf-8 인코딩만 읽을수 있는 문제가 있어서 다른거로 바꿔야할까싶음
 - 동기화서버는 rpc로 작성
+- grpc, quic 확인
 
 # todo - cs
 - 공용부분을 분리
 - 내가 추가하지 않은 using이 자꾸 늘어나는데 vs에서 자동 추가되는건지 코파일럿이 추가하는건지 모르겠다
 
+#20250630 - cpp
+- msquic, openssl 라이브러리 정적 링크용으로 빌드해서 추가
+- msquic 테스트 코드 svr_quic, cli_quic 추가
+- 연결, 빈데이터 송수신까지만 확인함
 
 #20250614 - cs
 - PacketHandler의 인터페이스 IPacketHandler를 추가
