@@ -12,16 +12,48 @@ namespace PL_Server_v2_World
 {
     public class PlayerSession : NetSession
     {
-        const int _maxBufferSize = 1024 * 10;
-        byte[] _recvBuffer = new byte[_maxBufferSize];
+        int _maxBufferSize = 1024 * 10;
+
+        byte[] _recvBuffer;
         int _recvLength = 0;
         int _currPos = 0;
         int _readPos = 0;
 
         PacketHead head = new();
-        
-        public PlayerSession(Socket socket, int recvBufferSize = 1024*10) : base(socket, recvBufferSize) {
+
+        public Int32 HeartbeatCount { get; set; } = 0;
+        public DateTime HeartbeatTime { get; set; } = DateTime.UtcNow;
+
+        public PlayerSession(Socket socket, int recvBufferSize = 1024 * 10) : base(socket, recvBufferSize) {
+            _maxBufferSize = recvBufferSize;
+            _recvBuffer = new byte[_maxBufferSize];
         }
+
+        public override void CheckHeartbeat() {
+            DateTime curTime = DateTime.UtcNow;
+            TimeSpan diff = curTime - HeartbeatTime;
+
+            double timeSpan = diff.TotalMilliseconds;
+            if (timeSpan > 15 * 1000) {
+                if (HeartbeatCount > 5) {
+                    Disconnect();
+                    return;
+                }
+
+                HeartbeatTime = curTime;
+                IncHeartbeatCount();
+
+                PacketCS_Heaetbeat sendPacket = new();
+                Send(sendPacket);
+            }
+        }
+        public void IncHeartbeatCount() {
+            HeartbeatCount += 1;
+        }
+        public void DecHeartbeatCount() {
+            HeartbeatCount -= 1;
+        }
+
         public void Send(PacketBase sendPacket) {
             lock (_sendLock) {
                 Serializer ser = Serializer.PacketSerializer(sendPacket);
@@ -31,17 +63,17 @@ namespace PL_Server_v2_World
         }
 
         protected override bool DataParsing(NetSession session, byte[] buffer, int offset, int transferred) {
-            if(_maxBufferSize < _currPos + transferred) {
+            if (_maxBufferSize < _currPos + transferred) {
                 return false;
             }
             Array.Copy(buffer, offset, _recvBuffer, _currPos, transferred);
             _currPos += transferred;
             _recvLength += transferred;
-            if( _recvLength > PacketHead.Length) {
+            if (_recvLength > PacketHead.Length) {
                 return true;
             }
             head.Serialize(new Serializer(_recvBuffer, _recvLength));
-            if( _recvLength > head.PacketLength) {
+            if (_recvLength > head.PacketLength) {
                 return true;
             }
 
@@ -130,7 +162,7 @@ namespace PL_Server_v2_World
             return await Task.FromResult(true);
         }
         private static async Task<bool> CS_HeartbeatAsync(PlayerSession Player, PacketBody pack) {
-
+            Player.DecHeartbeatCount();
             return await Task.FromResult(true);
         }
         private static async Task<bool> CS_EchoAsync(PlayerSession Player, PacketBody pack) {
@@ -146,5 +178,4 @@ namespace PL_Server_v2_World
             return await Task.FromResult(true);
         }
     }
-
 }

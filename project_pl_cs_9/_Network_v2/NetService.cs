@@ -31,9 +31,27 @@ namespace PL_Network_v2
                 _listenWaitCount = config.ListenWaitCount;
             }
         }
-        public void Connect() {
+        public Socket Connect(IPEndPoint endPoint) {
+            Socket socket = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            socket.Connect(endPoint);
+
+            return socket;
         }
-        public void Disconnect() { }
+        public void Disconnect(Socket socket) {
+            try {
+                if (socket.Connected) {
+                    Console.WriteLine($"Socket Disconnect: {socket.RemoteEndPoint}");
+                    socket.Shutdown(SocketShutdown.Both);
+                    socket.Disconnect(false);
+                }
+            } catch (ObjectDisposedException) {
+                Console.WriteLine("Socket already closed");
+            } catch (Exception e) {
+                Console.WriteLine($"Error: {e.Message}");
+            } finally {
+                socket.Close();
+            }
+        }
 
         public void ListenStart() {
             try {
@@ -112,6 +130,7 @@ namespace PL_Network_v2
             var listenSocket = (Socket)args.UserToken!;
             if (null != args.AcceptSocket && SocketError.Success == args.SocketError) {
                 if (_acceptHandlers.TryGetValue(listenSocket, out var sessionFactory)) {
+                    Console.WriteLine($"NetworkService OnAcceptCompleted. clientSocket:{args.AcceptSocket}");
                     NetSession session = sessionFactory(args.AcceptSocket);
                 }
             } else {

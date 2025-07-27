@@ -17,23 +17,21 @@ namespace PL_Server_v2_World
         public string Ip { get; set; } = "";
         public int Port { get; set; } = 0;
     }
-    public class ClientListenerConfig
+
+    public class InternalConnectionInfo
     {
+        public int Id { get; set; } = 0;
+        public string Name { get; set; } = "";
         public ConnectionConfig ConnectionInfo { get; set; } = new();
         public IPAddress GetIp() { return ConnectionInfo.Ip == "Any" ? IPAddress.Any : IPAddress.Parse(ConnectionInfo.Ip); }
         public int GetPort() { return ConnectionInfo.Port; }
-    }
-    public class DbServerConnectConfig
-    {
-        public int Id { get; set; } = 0;
-        public ConnectionConfig ConnectionInfo { get; set; } = new();
     }
 
     //
     public class Config
     {
-        public ClientListenerConfig ClientListener { get; set; } = new();
-        public DbServerConnectConfig DbServerConnect { get; set; } = new();
+        public InternalConnectionInfo ClientListener { get; set; } = new();
+        public InternalConnectionInfo DbServerConnect { get; set; } = new();
 
         public int MaxBufferSize { get; set; } = 1024 * 10;
 

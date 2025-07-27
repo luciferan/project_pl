@@ -44,9 +44,14 @@ namespace PL_Network_v2
         }
 
         void OnRecvCompleted(object? sender, SocketAsyncEventArgs args) {
-            if (SocketError.Success == args.SocketError && 0 < args.BytesTransferred && null != args.Buffer) {
-                Console.WriteLine($"[{_socket}] OnRecvCompleted. recvSize:{args.BytesTransferred}");
-                DataParsing(this, args.Buffer, args.Offset, args.BytesTransferred);
+            if (SocketError.Success == args.SocketError) {
+                if (0 < args.BytesTransferred && null != args.Buffer) {
+                    Console.WriteLine($"[{_socket}] OnRecvCompleted. recvSize:{args.BytesTransferred}");
+                    DataParsing(this, args.Buffer, args.Offset, args.BytesTransferred);
+                } else {
+                    Console.Write($"[{_socket}] OnRecvCompleted BytesTransferred < 0");
+                    Disconnect();
+                }
             } else {
                 Console.WriteLine($"[{_socket}] Error: OnRecvCompleted. {args.SocketError}, BytesTransferred: {args.BytesTransferred}");
                 Disconnect();
@@ -83,7 +88,6 @@ namespace PL_Network_v2
             if (false == pending) {
                 OnSendCompleted(null, _sendArgs);
             }
-
         }
 
         void OnSendCompleted(object? sender, SocketAsyncEventArgs args) {
@@ -107,7 +111,7 @@ namespace PL_Network_v2
             }
         }
 
-        void Disconnect() {
+        protected void Disconnect() {
             if (1 == Interlocked.Exchange(ref _disconnected, 1)) {
                 return;
             }
@@ -128,5 +132,7 @@ namespace PL_Network_v2
                 }
             }
         }
+
+        public virtual void CheckHeartbeat() { }
     }
 }
