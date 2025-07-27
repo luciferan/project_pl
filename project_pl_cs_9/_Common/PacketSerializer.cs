@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace PL_Network
+namespace PL_Common
 {
     public class Serializer
     {
@@ -119,7 +119,6 @@ namespace PL_Network
             }
             offset += length;
         }
-
 
         static public Serializer PacketSerializer(PacketBase body) {
             int PacketLength = PacketHead.Length + body.GetSize() + PacketTail.Length;

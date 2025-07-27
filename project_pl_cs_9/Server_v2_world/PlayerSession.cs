@@ -1,28 +1,74 @@
-﻿using Server;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Sources;
-using PL_Network;
-using Org.BouncyCastle.Bcpg;
+using System.Net.Sockets;
+using PL_Common;
+using PL_Network_v2;
+using System.Net.Mime;
 
-
-namespace Server
+namespace PL_Server_v2_World
 {
-    public class PacketHandler : IPacketHandler
+    public class PlayerSession : NetSession
     {
-        private static readonly Lazy<PacketHandler> _instance = new(() => new());
-        public static PacketHandler Instance => _instance.Value;
+        const int _maxBufferSize = 1024 * 10;
+        byte[] _recvBuffer = new byte[_maxBufferSize];
+        int _recvLength = 0;
+        int _currPos = 0;
+        int _readPos = 0;
+
+        PacketHead head = new();
+        
+        public PlayerSession(Socket socket, int recvBufferSize = 1024*10) : base(socket, recvBufferSize) {
+        }
+        public void Send(PacketBase sendPacket) {
+            lock (_sendLock) {
+                Serializer ser = Serializer.PacketSerializer(sendPacket);
+                _sendQueue.Enqueue(ser.Buffer);
+            }
+            DoSend();
+        }
+
+        protected override bool DataParsing(NetSession session, byte[] buffer, int offset, int transferred) {
+            if(_maxBufferSize < _currPos + transferred) {
+                return false;
+            }
+            Array.Copy(buffer, offset, _recvBuffer, _currPos, transferred);
+            _currPos += transferred;
+            _recvLength += transferred;
+            if( _recvLength > PacketHead.Length) {
+                return true;
+            }
+            head.Serialize(new Serializer(_recvBuffer, _recvLength));
+            if( _recvLength > head.PacketLength) {
+                return true;
+            }
+
+            Packet packet = Serializer.PacketDeserializer(_recvBuffer, head.PacketLength);
+            _readPos = head.PacketLength;
+            BufferTrim();
+
+            PlayerPacketHandler.Instance.Enqueue(this, packet.Body);
+            return true;
+        }
+
+        public void BufferTrim() {
+            Array.Copy(_recvBuffer, _readPos, _recvBuffer, 0, _recvBuffer.Length - _readPos);
+            _recvLength -= _readPos;
+            _currPos -= _readPos;
+            _readPos = 0;
+        }
+    }
+
+    public class PlayerPacketHandler : IPacketHandler
+    {
+        private static readonly Lazy<PlayerPacketHandler> _instance = new(() => new());
+        public static PlayerPacketHandler Instance => _instance.Value;
 
         private readonly Dictionary<UInt32, Func<PlayerSession, PacketBody, Task<bool>>> functionMap = new();
 
-        private PacketHandler(int maxParallelism = 4) : base(maxParallelism) {
+        private PlayerPacketHandler(int maxParallelism = 4) : base(maxParallelism) {
             RegistPacketFunction();
         }
 
@@ -100,4 +146,5 @@ namespace Server
             return await Task.FromResult(true);
         }
     }
+
 }

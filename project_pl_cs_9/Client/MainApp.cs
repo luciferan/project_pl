@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using System.IO;
 using PL_Network;
 
-namespace Client
+namespace PL_Client
 {
     internal class MainApp
     {

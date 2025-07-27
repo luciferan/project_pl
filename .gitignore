@@ -4,6 +4,7 @@
 /project_pl_cpp_20/_external/rapidjson
 /project_pl_cpp_20/_external/msquic/server_cert.pem
 /project_pl_cpp_20/_external/msquic/server_key.pem
+/project_pl_cpp_20/_external/asio
 /project_pl_cpp_20/bin64d
 /project_pl_cpp_20/bin64r
 /project_pl_cs_9/.vs

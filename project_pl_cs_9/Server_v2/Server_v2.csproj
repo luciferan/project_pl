@@ -9,11 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MySql.Data" Version="9.3.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\_Network\_Network.csproj" />
+    <ProjectReference Include="..\_Common\_Common.csproj" />
+    <ProjectReference Include="..\_Network_v2\_Network_v2.csproj" />
   </ItemGroup>
 
 </Project>
