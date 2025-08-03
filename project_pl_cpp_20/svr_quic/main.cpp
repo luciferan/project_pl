@@ -1,6 +1,8 @@
 
 #include "../_external/msquic/include/msquic/msquic.h"
 #include <iostream>
+#include <thread>
+#include <vector>
 
 const QUIC_API_TABLE* MsQuic;
 HQUIC Registration = nullptr;
@@ -177,12 +179,24 @@ int main(int argc, char* argv[])
     }
 
     cout << "Listening..." << endl;
+
+    vector<thread> workers;
+    for (int idx = 0; idx < thread::hardware_concurrency(); ++idx) {
+        workers.emplace_back([]() {
+            this_thread::sleep_for(std::chrono::hours(24));
+        });
+    }
+
     getchar();
 
     if (Listener) MsQuic->ListenerClose(Listener);
     if (Configuration) MsQuic->ConfigurationClose(Configuration);
     if (Registration) MsQuic->RegistrationClose(Registration);
     if (MsQuic) MsQuicClose(MsQuic);
+
+    for (auto& t : workers) {
+        t.join();
+    }
 
     return 0;
 }
