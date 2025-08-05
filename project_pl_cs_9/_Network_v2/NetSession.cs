@@ -12,17 +12,26 @@ namespace PL_Network_v2
         protected Socket? _socket = null;
         protected int _disconnected = 0;
 
-        protected SocketAsyncEventArgs _recvArgs = new();
+        protected int _maxBufferSize = 1024 * 10;
 
-        protected object _sendLock = new();
+        protected SocketAsyncEventArgs _recvArgs = new();
+        protected byte[]? _recvBuffer = null;
+        protected int _recvLength = 0;
+        protected int _currPos = 0;
+        protected int _readPos = 0;
+
         protected SocketAsyncEventArgs _sendArgs = new();
+        protected object _sendLock = new();
         protected Queue<ArraySegment<byte>> _sendQueue = new();
         protected List<ArraySegment<byte>> _sendPendingList = new();
 
         public NetSession(Socket socket, int recvBufferSize = 1024 * 10) {
             _socket = socket;
 
-            _recvArgs.SetBuffer(new byte[recvBufferSize], 0, recvBufferSize);
+            _maxBufferSize = recvBufferSize;
+            _recvBuffer = new byte[_maxBufferSize];
+
+            _recvArgs.SetBuffer(new byte[_maxBufferSize], 0, _maxBufferSize);
             _recvArgs.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecvCompleted);
             _recvArgs.UserToken = this;
 

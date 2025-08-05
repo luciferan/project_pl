@@ -1,0 +1,11 @@
+{
+  "UserId": "a01",
+  "Password": "p01",
+  "ServerConnect": {
+    "ConnectionInfo": {
+      "Ip": "127.0.0.1",
+      "Port": 16101
+    },
+    "MaxBufferSize": 10240
+  }
+}

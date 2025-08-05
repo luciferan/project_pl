@@ -1,24 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Loader;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Reflection;
 using System.Net;
 using PL_Common;
 
-namespace PL_Server_v2_World
+namespace PL_Server_v2_Auth
 {
     public class Config
     {
-        public Int32 WorldId { get; set; } = 0;
         public InternalConnectionInfo ClientListener { get; set; } = new();
         public InternalConnectionInfo DbServerConnect { get; set; } = new();
 
         public Config() { }
-        public Config(string configPath) => LoadConfig(configPath);
+        public Config(string configPath) { LoadConfig(configPath); }
         public bool LoadConfig(string configPath) {
             try {
                 string json = File.ReadAllText(configPath);
@@ -27,7 +24,6 @@ namespace PL_Server_v2_World
                 });
 
                 if (config != null) {
-                    this.WorldId = config.WorldId;
                     this.ClientListener = config.ClientListener;
                     this.DbServerConnect = config.DbServerConnect;
 
@@ -37,11 +33,10 @@ namespace PL_Server_v2_World
                 Console.WriteLine($"LoadConfig failed {configPath}. Exception: {e.Message}");
             }
 
-            Console.WriteLine($"{configPath} 파일을 읽어오지 못했습니다. 기본 설정 파일을 생성합니다.");
+            Console.WriteLine("server_config_v2.json 파일을 읽어오지 못했습니다. 기본 설정 파일을 생성합니다.");
             DefaultConfig(configPath);
             return false;
         }
-
         public void DefaultConfig(string configPath) {
             var config = new Config();
             string json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });

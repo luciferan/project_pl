@@ -10,10 +10,10 @@ namespace PL_Common
 {
     public abstract class PacketBase
     {
-        UInt32 packetType = 0;
-        public UInt32 PacketType { get { return packetType; } set { packetType = value; } }
+        Int32 packetType = 0;
+        public Int32 PacketType { get { return packetType; } set { packetType = value; } }
 
-        public PacketBase(UInt32 packetType) {
+        public PacketBase(Int32 packetType) {
             this.packetType = packetType;
         }
         public void SerializeType(Serializer ser) {
@@ -23,7 +23,7 @@ namespace PL_Common
             Serialize(ser);
         }
         public abstract void Serialize(Serializer ser);
-        public int GetTypeSize() { return sizeof(UInt32); }
+        public int GetTypeSize() { return sizeof(Int32); }
         public abstract int GetSize();
     }
 
@@ -46,14 +46,14 @@ namespace PL_Common
 
     public class PacketBody
     {
-        UInt32 packetType = 0;
+        Int32 packetType = 0;
         byte[] packetData = Array.Empty<byte>();
-        public UInt32 PacketType { get { return packetType; } set { packetType = value; } }
+        public Int32 PacketType { get { return packetType; } set { packetType = value; } }
         public byte[] PacketData { get { return packetData; } set { PacketData = value; } }
 
         public PacketBody() { }
         public void Serialize(Serializer ser, int bodyLength) {
-            packetData = new byte[bodyLength - sizeof(UInt32)];
+            packetData = new byte[bodyLength - sizeof(Int32)];
             ser.Value(ref packetType);
             ser.Value(ref packetData, packetData.Length);
         }
@@ -96,5 +96,4 @@ namespace PL_Common
             Tail.Serialize(ser);
         }
     }
-
 }

@@ -11,12 +11,6 @@ namespace PL_Server_v2_Db
 {
     public class AuthSession : NetSession
     {
-        const int _maxBufferSize = 1024 * 10;
-        byte[] _recvBuffer = new byte[_maxBufferSize];
-        int _recvLength = 0;
-        int _currPos = 0;
-        int _readPos = 0;
-
         PacketHead head = new();
 
         public AuthSession(Socket socket, int recvBufferSize = 1024 * 10) : base(socket, recvBufferSize) {
@@ -30,6 +24,9 @@ namespace PL_Server_v2_Db
         }
 
         protected override bool DataParsing(NetSession session, byte[] buffer, int offset, int transferred) {
+            if( null == _recvBuffer) {
+                return false;
+            }
             if (_maxBufferSize < _currPos + transferred) {
                 return false;
             }
@@ -53,6 +50,9 @@ namespace PL_Server_v2_Db
         }
 
         public void BufferTrim() {
+            if (null == _recvBuffer) {
+                return;
+            }
             Array.Copy(_recvBuffer, _readPos, _recvBuffer, 0, _recvBuffer.Length - _readPos);
             _recvLength -= _readPos;
             _currPos -= _readPos;

@@ -6,17 +6,18 @@ using System.Threading.Tasks;
 using System.Net.Sockets;
 using PL_Common;
 using PL_Network_v2;
-using System.Net.Mime;
 
-namespace PL_Server_v2_World
+namespace PL_Server_v2_Auth
 {
     public class PlayerSession : NetSession
     {
         PacketHead head = new();
+
         public Int32 HeartbeatCount { get; set; } = 0;
         public DateTime HeartbeatTime { get; set; } = DateTime.UtcNow;
 
-        public PlayerSession(Socket socket, int recvBufferSize = 1024 * 10) : base(socket, recvBufferSize) { }
+        public PlayerSession(Socket socket, int recvBufferSize = 1024 * 10) : base(socket, recvBufferSize) {
+        }
 
         public override void CheckHeartbeat() {
             DateTime curTime = DateTime.UtcNow;
@@ -36,8 +37,12 @@ namespace PL_Server_v2_World
                 Send(sendPacket);
             }
         }
-        public void IncHeartbeatCount() => HeartbeatCount += 1;
-        public void DecHeartbeatCount() => HeartbeatCount -= 1;
+        public void IncHeartbeatCount() {
+            HeartbeatCount += 1;
+        }
+        public void DecHeartbeatCount() {
+            HeartbeatCount -= 1;
+        }
 
         public void Send(PacketBase sendPacket) {
             lock (_sendLock) {
@@ -46,7 +51,6 @@ namespace PL_Server_v2_World
             }
             DoSend();
         }
-
         protected override bool DataParsing(NetSession session, byte[] buffer, int offset, int transferred) {
             if (null == _recvBuffer) {
                 return false;
@@ -91,7 +95,9 @@ namespace PL_Server_v2_World
 
         private readonly Dictionary<Int32, Func<PlayerSession, PacketBody, Task<bool>>> functionMap = new();
 
-        private PlayerPacketHandler(int maxParallelism = 4) : base(maxParallelism) => RegistPacketFunction();
+        private PlayerPacketHandler(int maxParallelism = 4) : base(maxParallelism) {
+            RegistPacketFunction();
+        }
 
         public void Enqueue(PlayerSession player, PacketBody packet) {
             Task task = Task.Factory.StartNew(async () => await PacketProcess(player, packet),
@@ -116,53 +122,23 @@ namespace PL_Server_v2_World
         }
 
         void RegistPacketFunction() {
-            Register(PacketTypeCS.auth, CS_AuthAsync);
-            Register(PacketTypeCS.enter_world, CS_EnterAsync);
-            Register(PacketTypeCS.leave_world, CS_LeaveAsync);
-            Register(PacketTypeCS.move, CS_MoveAsync);
-            Register(PacketTypeCS.interaction, CS_InteractionAsync);
-            Register(PacketTypeCS.chat, CS_ChatAsync);
-            Register(PacketTypeCS.heartbeat, CS_HeartbeatAsync);
-            Register(PacketTypeCS.echo, CS_EchoAsync);
+            Register(PacketTypeCS.auth, CS_Auth);
+
+            Register(PacketTypeCS.heartbeat, CS_Heartbeat);
+            Register(PacketTypeCS.echo, CS_Echo);
+
         }
 
-        private static async Task<bool> CS_AuthAsync(PlayerSession player, PacketBody pack) {
+        private static async Task<bool> CS_Auth(PlayerSession player, PacketBody pack) {
             PacketCS_Auth packet = new PacketCS_Auth(pack.PacketData);
+            return await Task.FromResult(true);
+        }
 
-            PacketWD_AuthRequest sendPacket = new PacketWD_AuthRequest();
-            sendPacket.UserId = packet.UserId;
-            sendPacket.Password = packet.Password;
-
-            var dbSession = WorldServerApp.Instance.GetDbSession();
-            dbSession?.Send(sendPacket);
-
-            return await Task.FromResult(true);
-        }
-        private static async Task<bool> CS_EnterAsync(PlayerSession Player, PacketBody pack) {
-            PacketCS_EnterWorld packet = new PacketCS_EnterWorld(pack.PacketData);
-            return await Task.FromResult(true);
-        }
-        private static async Task<bool> CS_LeaveAsync(PlayerSession Player, PacketBody pack) {
-            PacketCS_EnterWorld packet = new PacketCS_EnterWorld(pack.PacketData);
-            return await Task.FromResult(true);
-        }
-        private static async Task<bool> CS_MoveAsync(PlayerSession Player, PacketBody pack) {
-            PacketCS_Move packet = new PacketCS_Move(pack.PacketData);
-            return await Task.FromResult(true);
-        }
-        private static async Task<bool> CS_InteractionAsync(PlayerSession Player, PacketBody pack) {
-            PacketCS_Interaction packet = new PacketCS_Interaction(pack.PacketData);
-            return await Task.FromResult(true);
-        }
-        private static async Task<bool> CS_ChatAsync(PlayerSession Player, PacketBody pack) {
-            PacketCS_Chat packet = new PacketCS_Chat(pack.PacketData);
-            return await Task.FromResult(true);
-        }
-        private static async Task<bool> CS_HeartbeatAsync(PlayerSession Player, PacketBody pack) {
+        private static async Task<bool> CS_Heartbeat(PlayerSession Player, PacketBody pack) {
             Player.DecHeartbeatCount();
             return await Task.FromResult(true);
         }
-        private static async Task<bool> CS_EchoAsync(PlayerSession Player, PacketBody pack) {
+        private static async Task<bool> CS_Echo(PlayerSession Player, PacketBody pack) {
             PacketCS_Echo packet = new PacketCS_Echo(pack.PacketData);
 
             string recvMsg = packet.EchoMsg;

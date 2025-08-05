@@ -1,0 +1,19 @@
+﻿{
+  "WorldId": 1,
+
+  "ClientListener": {
+    "ConnectionInfo": {
+      "Ip": "Any",
+      "Port": 16101
+    },
+    "MaxBufferSize": 10240
+  },
+  "DbServerConnect": {
+    "Id": 1,
+    "ConnectionInfo": {
+      "Ip": "127.0.0.1",
+      "Port": 20101
+    },
+    "MaxBufferSize": 10240
+  }
+}

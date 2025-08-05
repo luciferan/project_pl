@@ -5,34 +5,18 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using PL_Common;
 
 namespace PL_Server_v2_Db
 {
-    public class ConnectionConfig
-    {
-        public string Ip { get; set; } = "";
-        public int Port { get; set; } = 0;
-    }
-
-    public class InternalConnectionInfo
-    {
-        public int Id { get; set; } = 0;
-        public string Name { get; set; } = "";
-        public ConnectionConfig ConnectionInfo { get; set; } = new();
-        public IPAddress GetIp() { return ConnectionInfo.Ip == "Any" ? IPAddress.Any : IPAddress.Parse(ConnectionInfo.Ip); }
-        public int GetPort() { return ConnectionInfo.Port; }
-    }
-
-    //
     public class Config
     {
+        public Int32 DbId { get; set; } = 0;
         public InternalConnectionInfo AuthListener { get; set; } = new();
         public InternalConnectionInfo WorldListener { get; set; } = new();
 
-        public int MaxBufferSize { get; set; } = 1024 * 10;
-
         public Config() { }
-        public Config(string configPath) { LoadConfig(configPath); }
+        public Config(string configPath) => LoadConfig(configPath);
         public bool LoadConfig(string configPath) {
             try {
                 string json = File.ReadAllText(configPath);
@@ -41,6 +25,7 @@ namespace PL_Server_v2_Db
                 });
 
                 if (config != null) {
+                    this.DbId = config.DbId;
                     this.AuthListener = config.AuthListener;
                     this.WorldListener = config.WorldListener;
 
@@ -49,7 +34,8 @@ namespace PL_Server_v2_Db
             } catch {
                 Console.WriteLine($"LoadConfig failed {configPath}");
             }
-
+            Console.WriteLine($"{configPath} 파일을 읽어오지 못했습니다. 기본 설정 파일을 생성합니다.");
+            DefaultConfig(configPath);
             return false;
         }
 

@@ -18,16 +18,24 @@ history
 - 서버간 연결
 - 동기화서버 추가. 클라-동기화, 클라-서버, 동기화-서버의 트라이앵글 연결
 - 모니터링 추가
-- c#으로 포팅
 - rapidjson이 utf-8 인코딩만 읽을수 있는 문제가 있어서 다른거로 바꿔야할까싶음
 - 동기화서버는 rpc로 작성
 - grpc, quic 확인
 
 # todo - cs
-- 공용부분을 분리
+- db server. world query 작업. cpp 월드서버와 연동 테스트
+- mysql 연동
+- sqlite, csv 연동
 
 
-#20250308 - cpp
+#20250805 - cs
+- Config 공용부분을 분리
+- PacketSerializer의 string 셋팅을 변경
+- session의 send,recv 부분을 상위클래스로 이동
+- auth, world, db 서버로 분리
+- db서버에 mysql 연동. 쿼리 테스트중. cpp 코드랑 공용으로 사용할 예정이라 선순위로 작업중
+
+#20250803 - cpp
 - asio 테스트 코드 작성중
 - msquic 테스트 코드 작성중
 

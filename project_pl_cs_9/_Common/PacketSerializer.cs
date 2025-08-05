@@ -95,31 +95,38 @@ namespace PL_Common
             }
             offset += sizeof(Double);
         }
-        public void Value(ref char[] Data, int length) {
+        public void Value(ref char[] Data, Int32 length) {
             if (Write) {
+                Value(ref length);
                 Array.Copy(Data, 0, Buffer, offset, length);
             } else {
+                Value(ref length);
                 Array.Copy(Buffer, offset, Data, 0, length);
             }
             offset += length;
         }
-        public void Value(ref byte[] Data, int length) {
+        public void Value(ref byte[] Data, Int32 length) {
             if (Write) {
+                Value(ref length);
                 Array.Copy(Data, 0, Buffer, offset, length);
             } else {
+                Value(ref length);
                 Array.Copy(Buffer, offset, Data, 0, length);
             }
             offset += length;
         }
-        public void Value(ref string Data, int length) {
+        public void Value(ref string Data, ref Int16 length) {
             if (Write) {
+                Value(ref length);
                 Array.Copy(Encoding.UTF8.GetBytes(Data), 0, Buffer, offset, length);
             } else {
+                Value(ref length);
                 Data = Encoding.UTF8.GetString(Buffer, offset, length);
             }
             offset += length;
         }
 
+        //
         static public Serializer PacketSerializer(PacketBase body) {
             int PacketLength = PacketHead.Length + body.GetSize() + PacketTail.Length;
             Serializer ser = new Serializer(PacketLength);
@@ -138,7 +145,6 @@ namespace PL_Common
         }
 
         static public Packet PacketDeserializer(byte[] buffer, int bufferLength) {
-            //Packet packet = new(buffer, bufferLength);
             return new Packet(buffer, bufferLength);
         }
     }

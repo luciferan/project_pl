@@ -1,0 +1,22 @@
+﻿{
+  "DbId": 1,
+
+  "AuthListener": {
+    "Id": 1,
+    "Name": "AuthServer",
+    "ConnectionInfo": {
+      "Ip": "127.0.0.1",
+      "Port": 20101
+    },
+    "MaxBufferSize": 10240
+  },
+  "WorldListener": {
+    "Id": 1,
+    "Name": "WorldServer",
+    "ConnectionInfo": {
+      "Ip": "127.0.0.1",
+      "Port": 20201
+    },
+    "MaxBufferSize": 10240
+  }
+}
