@@ -188,10 +188,34 @@ namespace PL_Common
         public CharacterCreateDefault() { }
     }
 
-    public class GeneratorItemSN {
-        public static Int64 _key = 0;
+    public class GeneratorItemSN
+    {
+        // 0x0000000000000000
+        // 0xffffffff00000000: utc_time_sec
+        // 0x00000000ff000000: server_id (0~255)
+        // 0x0000000000ffffff: sequance_id (0~16777215)
+
+        private static Int32 _lastTimeSec = 0;
+        private static byte _serverId = 0;
+        private static Int32 _sequance = 0;
+
+        public static void Init(Int32 serverId = 0) {
+            _serverId = (byte)serverId;
+        }
         public static Int64 GenerateSN() {
-            return _key++;
+            Int32 currTimeSec = (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            if( currTimeSec != _lastTimeSec) {
+                _lastTimeSec = currTimeSec;
+                _sequance = 0;
+            } else {
+                _sequance += 1;
+                if (_sequance > 0xFFFFFF) {
+                    throw new ArgumentOutOfRangeException(nameof(_sequance), "Sequence must be <= 0xFFFFFF");
+                }
+            }
+
+            return ((Int64)_lastTimeSec << 32) | ((Int64)_serverId << 24) | ((Int64)_sequance & 0xFFFFFF);
         }
     }
 }

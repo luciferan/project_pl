@@ -3,6 +3,7 @@ using Org.BouncyCastle.Bcpg;
 using Org.BouncyCastle.Crypto.Engines;
 using PL_Common;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
@@ -12,7 +13,16 @@ using System.Transactions;
 
 namespace PL_Server_v2_Db
 {
-    public class WorldDbConnection {
+    public class Result
+    {
+        public bool Success { get; set; }
+        public Exception? Error { get; set; }
+
+        public static Result Ok() => new Result { Success = true };
+        public static Result Fail(Exception ex) => new Result { Success = false, Error = ex };
+    }
+
+    public partial class WorldDbConnection {
         string database = "Server=localhost;Port=3306;Database=pl_world;Uid=user_pl;Pwd=pass_pl";
 
         public WorldDbConnection() { }
@@ -23,90 +33,53 @@ namespace PL_Server_v2_Db
             Console.WriteLine($"QueryCharacterItemLoad run: {QueryCharacterItemLoad(1, out List<ItemDbInfo> items)}");
         }
 
-        public bool QueryCharacterCreate(Int64 uid, Int64 cid, string name) {
+        public bool CharacterCreate(Int64 uid, Int64 cid, string name) {
+            QueryCharacterCreate(uid, cid, name);
+            return true;
+        }
+
+        public bool ItemCreate(Int64 cid, List<ItemDbInfo> items) {
             using MySqlConnection conn = new MySqlConnection(database);
             MySqlTransaction? transaction = null;
-
             try {
                 conn.Open();
                 transaction = conn.BeginTransaction();
 
-                (int x, int y, int z) = CharacterCreateDefault.pos.GetPos();
-                int zone = CharacterCreateDefault.pos.GetZone();
-
-                string query = "";
-                query = "INSERT INTO characters "
-                    + "(user_id,id,name,zone,pos_x,pos_y,pos_z,inserted_at,last_update_at)"
-                    + $"VALUE ({uid},{cid},\"{name}\",{zone},{x},{y},{z},NOW(),NOW())";
-                MySqlCommand create_char = new MySqlCommand(query, conn);
-                create_char.ExecuteNonQuery();
-
-                foreach( ItemDbInfo item in CharacterCreateDefault.items) {
-                    query = "INSERT INTO items "
-                        + "(item_sn,item_type,item_count,owner_char_id,bind,loc_type,loc_index)"
-                        + "VALUES "
-                        + $"({GeneratorItemSN.GenerateSN()},{item.ItemType},{item.Count},{cid},{item.Bind},{item.LocType},{item.LocIndex})";
-
-                    MySqlCommand craete_item = new MySqlCommand(query, conn);
-                    craete_item.ExecuteNonQuery();
+                Result res = QueryItemCreate(conn, cid, items);
+                if (res.Success) {
+                    transaction.Commit();
+                    return true;
+                } else {
+                    Console.WriteLine($"ItemDelete fail: {res.Error?.Message}");
+                    transaction.Rollback();
                 }
-
-                transaction.Commit();
-                return true;
             } catch (Exception ex) {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine($"ItemDelete fail: {ex.Message}");
                 transaction?.Rollback();
-                return false;
             }
-        }
-        public void QueryCharacterDelete() { }
-        public void QueryCharacterList() { }
-        public bool QueryCharacterLoad(Int64 cid, out CharacterDbInfo charData) {
-            charData = new();
-
-            using MySqlConnection conn = new MySqlConnection(database);
-            try {
-                conn.Open();
-                string query = "select name,zone,pos_x,pos_y,pos_z "
-                    + "from characters " 
-                    + $"where id = {cid} limit 1";
-                MySqlCommand command = new MySqlCommand(query, conn);
-
-                MySqlDataReader rows = command.ExecuteReader();
-                if( rows.Read()) {
-                    charData.name = rows.GetString("name");
-                    charData.pos.SetPos(rows.GetInt32("zone"), rows.GetInt32("pos_x"), rows.GetInt32("pos_y"), rows.GetInt32("pos_z"));
-                }
-
-                return true;
-            } catch (Exception ex) {
-                Console.WriteLine(ex.Message);
-                return false;
-            }
+            return true;
         }
 
-        public bool QueryCharacterItemLoad(Int64 cid, out List<ItemDbInfo> items) {
-            items = new List<ItemDbInfo>();
-
+        public bool ItemRemove(Int64 cid, List<Int64> itemSnList) {
             using MySqlConnection conn = new MySqlConnection(database);
+            MySqlTransaction? transaction = null;
             try {
                 conn.Open();
-                string query = "select item_sn,item_type,item_count,bind,loc_type,loc_index " 
-                    + "from items " 
-                    + $"where owner_char_id = {cid}";
-                MySqlCommand command = new MySqlCommand(query, conn);
+                transaction = conn.BeginTransaction();
 
-                MySqlDataReader rows = command.ExecuteReader();
-                while (rows.Read()) {
-                    items.Add(new ItemDbInfo(rows.GetInt64("item_sn"), rows.GetInt32("item_type"), rows.GetInt32("item_count"), rows.GetInt16("bind"), rows.GetInt16("loc_type"), rows.GetInt16("loc_index")));
+                Result res = QueryItemRemove(conn, cid, itemSnList);
+                if (res.Success) {
+                    transaction.Commit();
+                    return true;
+                } else {
+                    Console.WriteLine($"ItemDelete fail: {res.Error?.Message}");
+                    transaction.Rollback();
                 }
-
-                return true;
             } catch (Exception ex) {
-                Console.WriteLine(ex.Message);
-                return false;
+                Console.WriteLine($"ItemDelete fail: {ex.Message}");
+                transaction?.Rollback();
             }
-
+            return true;
         }
     }
 }
