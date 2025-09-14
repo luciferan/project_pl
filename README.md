@@ -27,6 +27,9 @@ history
 - mysql 연동
 - sqlite, csv 연동
 
+#20250914 - cs
+- 쿼리 코드 수정
+
 #20250806 - cs
 - 아이템 시리얼 생성기 추가. 초당 아이템이 16백만개가 생성되진 않겠지
 - WorldQuery.cs 파일이 길어지는 느낌이라 _characer, _item으로 분리
