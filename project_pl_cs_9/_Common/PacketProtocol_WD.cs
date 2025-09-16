@@ -26,7 +26,7 @@ namespace PL_Common
         public Int32 WorldId { get { return world_id; } set { world_id = value; } }
 
         //
-        public PacketWD_JoinRequest() : base((Int32)PacketTypeWD.heartbeat) { }
+        public PacketWD_JoinRequest() : base((Int32)PacketTypeWD.join_request) { }
         public PacketWD_JoinRequest(byte[] buffer) : this() => SerializeBody(new Serializer(buffer, buffer.Length));
         public override void Serialize(Serializer ser) {
             ser.Value(ref world_id);

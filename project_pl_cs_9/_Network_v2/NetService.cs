@@ -115,22 +115,24 @@ namespace PL_Network_v2
         }
 
         void AcceptRegist(SocketAsyncEventArgs args, Socket listenSocket) {
-            if (null == _listenSocket) {
+            if (null == listenSocket) {
                 return;
             }
+            Console.WriteLine($"AcceptRegist {listenSocket.LocalEndPoint}");
 
             args.AcceptSocket = null;
             bool pending = listenSocket.AcceptAsync(args);
             if (false == pending) {
-                OnAcceptCompleted(listenSocket, args);
+                OnAcceptCompletedFromFactory(listenSocket, args);
             }
         }
 
         void OnAcceptCompletedFromFactory(object? sender, SocketAsyncEventArgs args) {
+            Console.WriteLine($"OnAcceptCompletedFromFactory");
             var listenSocket = (Socket)args.UserToken!;
             if (null != args.AcceptSocket && SocketError.Success == args.SocketError) {
                 if (_acceptHandlers.TryGetValue(listenSocket, out var sessionFactory)) {
-                    Console.WriteLine($"NetworkService OnAcceptCompleted. clientSocket:{args.AcceptSocket}");
+                    Console.WriteLine($"NetworkService OnAcceptCompleted. clientSocket:{args.AcceptSocket.ToString()}");
                     NetSession session = sessionFactory(args.AcceptSocket);
                 }
             } else {

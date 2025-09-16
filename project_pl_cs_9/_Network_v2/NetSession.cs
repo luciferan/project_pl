@@ -46,7 +46,7 @@ namespace PL_Network_v2
                 return;
             }
 
-            Console.WriteLine($"[{_socket}] DoRecv");
+            Console.WriteLine($"[{_socket.ToString()}] DoRecv");
             if (false == _socket.ReceiveAsync(_recvArgs)) {
                 OnRecvCompleted(null, _recvArgs);
             }
@@ -55,14 +55,14 @@ namespace PL_Network_v2
         void OnRecvCompleted(object? sender, SocketAsyncEventArgs args) {
             if (SocketError.Success == args.SocketError) {
                 if (0 < args.BytesTransferred && null != args.Buffer) {
-                    Console.WriteLine($"[{_socket}] OnRecvCompleted. recvSize:{args.BytesTransferred}");
+                    Console.WriteLine($"[{_socket.ToString()}] OnRecvCompleted. recvSize:{args.BytesTransferred}");
                     DataParsing(this, args.Buffer, args.Offset, args.BytesTransferred);
                 } else {
-                    Console.Write($"[{_socket}] OnRecvCompleted BytesTransferred < 0");
+                    Console.Write($"[{_socket.ToString()}] OnRecvCompleted BytesTransferred < 0");
                     Disconnect();
                 }
             } else {
-                Console.WriteLine($"[{_socket}] Error: OnRecvCompleted. {args.SocketError}, BytesTransferred: {args.BytesTransferred}");
+                Console.WriteLine($"[{_socket.ToString()}] Error: OnRecvCompleted. {args.SocketError}, BytesTransferred: {args.BytesTransferred}");
                 Disconnect();
             }
 
@@ -84,7 +84,7 @@ namespace PL_Network_v2
             if (0 != _sendPendingList.Count) {
                 return;
             }
-            Console.WriteLine($"[{_socket}] DoSend");
+            Console.WriteLine($"[{_socket.ToString()}] DoSend");
             lock (_sendLock) {
                 for (int cnt = 0; cnt < _sendQueue.Count && cnt < 10; ++cnt) {
                     var buffer = _sendQueue.Dequeue();
@@ -101,7 +101,7 @@ namespace PL_Network_v2
 
         void OnSendCompleted(object? sender, SocketAsyncEventArgs args) {
             if (SocketError.Success == args.SocketError && 0 < args.BytesTransferred) {
-                Console.WriteLine($"[{_socket}] OnSendCompleted. transferred:{args.BytesTransferred}");
+                Console.WriteLine($"[{_socket.ToString()}] OnSendCompleted. transferred:{args.BytesTransferred}");
                 try {
                     lock (_sendLock) {
                         _sendArgs.BufferList = null;
@@ -112,10 +112,10 @@ namespace PL_Network_v2
                         }
                     }
                 } catch (Exception e) {
-                    Console.WriteLine($"[{_socket}] Error: OnSendCompleted. {e.Message}, BytesTransferred: {args.BytesTransferred}");
+                    Console.WriteLine($"[{_socket.ToString()}] Error: OnSendCompleted. {e.Message}, BytesTransferred: {args.BytesTransferred}");
                 }
             } else {
-                Console.WriteLine($"[{_socket}] Error: OnSendCompleted. {args.SocketError}");
+                Console.WriteLine($"[{_socket.ToString()}] Error: OnSendCompleted. {args.SocketError}");
                 Disconnect();
             }
         }

@@ -8,7 +8,7 @@ namespace PL_Server_v2_World
     public class MainApp
     {
         static void Main(string[] args) {
-            Console.WriteLine("app start.");
+            Console.WriteLine("WorldServer start.");
             //
             string configPath = "world_server_config_v2.json";
 

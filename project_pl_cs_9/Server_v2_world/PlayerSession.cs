@@ -57,11 +57,11 @@ namespace PL_Server_v2_World
             Array.Copy(buffer, offset, _recvBuffer, _currPos, transferred);
             _currPos += transferred;
             _recvLength += transferred;
-            if (_recvLength > PacketHead.Length) {
+            if (_recvLength < PacketHead.Length) {
                 return true;
             }
             head.Serialize(new Serializer(_recvBuffer, _recvLength));
-            if (_recvLength > head.PacketLength) {
+            if (_recvLength < head.PacketLength) {
                 return true;
             }
 

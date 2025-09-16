@@ -34,7 +34,7 @@ namespace PL_Server_v2_World
             do {
                 Thread.Sleep(1000);
                 Console.WriteLine("DbServer 연결 시도.");
-            } while (DbConnect());
+            } while (false == DbConnect());
 
             //
             netService.ListenStart(new List<(IPEndPoint, Func<Socket, NetSession>)> {
@@ -60,6 +60,7 @@ namespace PL_Server_v2_World
             if (null == config) {
                 return false;
             }
+
             try {
                 Socket socket = netService.Connect(new IPEndPoint(config.DbServerConnect.GetIp(), config.DbServerConnect.GetPort()));
                 if (null == socket || !socket.Connected) {

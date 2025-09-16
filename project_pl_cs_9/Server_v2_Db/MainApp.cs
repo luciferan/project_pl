@@ -8,7 +8,7 @@ namespace PL_Server_v2_Db
     public class MainApp
     {
         static void Main(string[] args) {
-            Console.WriteLine("server start.");
+            Console.WriteLine("DBServer start.");
 
             string configPath = "db_server_config_v2.json";
             Config config = new();
